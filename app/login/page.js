@@ -11,7 +11,6 @@ import { doc, getDoc, setDoc, serverTimestamp } from "firebase/firestore";
 import { auth, db, googleProvider } from "@/lib/firebase";
 import { useAuth } from "@/lib/AuthContext";
 import { isInAppBrowser } from "@/lib/inAppBrowser";
-import PremiumCard from "@/components/PremiumCard";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -91,75 +90,73 @@ export default function LoginPage() {
           Sign in to go live, join rooms, and battle.
         </p>
 
-        <PremiumCard glow className="mt-6 p-5">
-          <button
-            type="button"
-            onClick={handleGoogle}
-            disabled={googleBusy}
-            className="flex w-full items-center justify-center gap-2 rounded-full bg-white py-3 text-sm font-semibold text-void disabled:opacity-60"
-          >
-            <GoogleIcon />
-            {googleBusy ? "Signing in…" : "Continue with Google"}
-          </button>
+        <button
+          type="button"
+          onClick={handleGoogle}
+          disabled={googleBusy}
+          className="mt-6 flex w-full items-center justify-center gap-2 rounded-full bg-white py-3 text-sm font-semibold text-void disabled:opacity-60"
+        >
+          <GoogleIcon />
+          {googleBusy ? "Signing in…" : "Continue with Google"}
+        </button>
 
-          {inAppWarning && (
-            <p className="mt-2 text-center text-[11px] text-gold">
-              ⚠️ You&apos;re in an in-app browser. Open this link in Chrome/Safari
-              for Google sign-in.
-            </p>
-          )}
+        {inAppWarning && (
+          <p className="mt-2 text-center text-[11px] text-gold">
+            ⚠️ You&apos;re in an in-app browser. Open this link in Chrome/Safari
+            for Google sign-in.
+          </p>
+        )}
 
-          <div className="mt-5 flex items-center gap-3">
-            <div className="h-px flex-1 bg-white/10" />
-            <span className="text-xs text-mist">or</span>
-            <div className="h-px flex-1 bg-white/10" />
+        <div className="mt-5 flex items-center gap-3">
+          <div className="h-px flex-1 bg-white/10" />
+          <span className="text-xs text-mist">or</span>
+          <div className="h-px flex-1 bg-white/10" />
+        </div>
+
+        <form onSubmit={handleLogin} className="mt-5 space-y-4">
+          <div>
+            <label className="text-xs text-mist">Email</label>
+            <input
+              type="email"
+              required
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              className="mt-1 w-full rounded-lg bg-panel px-4 py-3 text-sm text-ink outline-none ring-1 ring-white/10 focus:ring-neon-violet"
+              placeholder="you@example.com"
+            />
           </div>
 
-          <form onSubmit={handleLogin} className="mt-5 space-y-4">
-            <div>
-              <label className="text-xs text-mist">Email</label>
-              <input
-                type="email"
-                required
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="mt-1 w-full rounded-xl bg-panel2 px-4 py-3 text-sm text-ink outline-none ring-1 ring-white/10 focus:ring-neon-violet"
-                placeholder="you@example.com"
-              />
+          <div>
+            <div className="flex items-center justify-between">
+              <label className="text-xs text-mist">Password</label>
+              <Link
+                href="/forgot-password"
+                className="text-xs text-neon-violet underline"
+              >
+                Forgot password?
+              </Link>
             </div>
 
-            <div>
-              <div className="flex items-center justify-between">
-                <label className="text-xs text-mist">Password</label>
-                <Link
-                  href="/forgot-password"
-                  className="text-xs text-neon-violet underline"
-                >
-                  Forgot password?
-                </Link>
-              </div>
+            <input
+              type="password"
+              required
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              className="mt-1 w-full rounded-lg bg-panel px-4 py-3 text-sm text-ink outline-none ring-1 ring-white/10 focus:ring-neon-violet"
+              placeholder="••••••••"
+            />
+          </div>
 
-              <input
-                type="password"
-                required
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="mt-1 w-full rounded-xl bg-panel2 px-4 py-3 text-sm text-ink outline-none ring-1 ring-white/10 focus:ring-neon-violet"
-                placeholder="••••••••"
-              />
-            </div>
+          {error && <p className="text-xs text-neon-pink">{error}</p>}
 
-            {error && <p className="text-xs text-neon-pink">{error}</p>}
-
-            <button
-              type="submit"
-              disabled={busy}
-              className="premium-btn w-full !rounded-full disabled:opacity-60"
-            >
-              {busy ? "Signing in…" : "Sign In"}
-            </button>
-          </form>
-        </PremiumCard>
+          <button
+            type="submit"
+            disabled={busy}
+            className="w-full rounded-full bg-glow-gradient py-3 text-sm font-semibold text-ink shadow-glow disabled:opacity-60"
+          >
+            {busy ? "Signing in…" : "Sign In"}
+          </button>
+        </form>
 
         <p className="mt-6 text-center text-sm text-mist">
           New here?{" "}

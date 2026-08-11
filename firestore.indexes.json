@@ -9,32 +9,6 @@
       ]
     },
     {
-      "collectionGroup": "casualMatches",
-      "queryScope": "COLLECTION",
-      "fields": [
-        { "fieldPath": "gameId", "order": "ASCENDING" },
-        { "fieldPath": "status", "order": "ASCENDING" },
-        { "fieldPath": "createdAt", "order": "ASCENDING" }
-      ]
-    },
-    {
-      "collectionGroup": "casualMatches",
-      "queryScope": "COLLECTION",
-      "fields": [
-        { "fieldPath": "gameId", "order": "ASCENDING" },
-        { "fieldPath": "status", "order": "ASCENDING" },
-        { "fieldPath": "createdAt", "order": "DESCENDING" }
-      ]
-    },
-    {
-      "collectionGroup": "ludoMatches",
-      "queryScope": "COLLECTION",
-      "fields": [
-        { "fieldPath": "status", "order": "ASCENDING" },
-        { "fieldPath": "createdAt", "order": "DESCENDING" }
-      ]
-    },
-    {
       "collectionGroup": "rechargeRequests",
       "queryScope": "COLLECTION",
       "fields": [

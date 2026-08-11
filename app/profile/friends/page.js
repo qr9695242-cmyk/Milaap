@@ -133,7 +133,7 @@ export default function FriendsCpPage() {
             </div>
           </div>
         ) : (
-          <div className="mt-2 premium-card p-4">
+          <div className="mt-2 rounded-2xl bg-panel p-4 ring-1 ring-white/5">
             <p className="text-xs text-mist">
               You don't have a CP yet. Search for someone and send a CP request from their profile.
             </p>
@@ -235,7 +235,7 @@ export default function FriendsCpPage() {
             {friendRequests.map((r) => (
               <div
                 key={r.id}
-                className="flex items-center justify-between premium-card p-3"
+                className="flex items-center justify-between rounded-xl bg-panel p-3 ring-1 ring-white/5"
               >
                 <div className="flex items-center gap-2">
                   <Avatar url={r.fromAvatar} name={r.fromName} size={36} />

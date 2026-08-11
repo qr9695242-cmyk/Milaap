@@ -40,7 +40,7 @@ export default function BlockedUsersPage() {
           <p className="mt-10 text-center text-sm text-mist">You haven't blocked anyone.</p>
         )}
         {rows.map((r) => (
-          <div key={r.id} className="flex items-center justify-between premium-card p-3">
+          <div key={r.id} className="flex items-center justify-between rounded-xl bg-panel p-3 ring-1 ring-white/5">
             <div className="flex items-center gap-3">
               <div className="flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-sm font-bold text-ink">
                 {(r.blockedName || "U").charAt(0).toUpperCase()}

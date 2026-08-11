@@ -13,9 +13,7 @@ const ICONS = {
   system: "📣",
   family: "👨‍👩‍👧",
   pk: "⚔️",
-  message: "💬",
-  live: "🔴",
-  room: "🎙️",
+  withdraw: "💳",
 };
 
 function timeAgo(ts) {
@@ -54,7 +52,7 @@ export default function NotificationsPage() {
 
   return (
     <main className="min-h-screen bg-void pb-28">
-      <header className="sticky top-0 z-20 flex items-center justify-between border-b border-white/5 bg-void/85 px-5 pb-4 pt-6 backdrop-blur-xl">
+      <header className="flex items-center justify-between px-5 pt-6">
         <div className="flex items-center gap-3">
           <Link href="/" className="text-lg text-ink/80">←</Link>
           <h1 className="font-display text-xl font-extrabold text-ink">Notifications</h1>
@@ -69,7 +67,7 @@ export default function NotificationsPage() {
         )}
       </header>
 
-      <section className="mx-4 mt-4 space-y-2">
+      <section className="mx-5 mt-4 space-y-2">
         {items.length === 0 && (
           <p className="mt-10 text-center text-sm text-mist">
             No notifications yet. When someone follows you or sends a gift, it'll show up here.
@@ -79,7 +77,7 @@ export default function NotificationsPage() {
           const inner = (
             <div
               onClick={() => !n.read && markAsRead(user.uid, n.id)}
-              className={`flex items-start gap-3 rounded-2xl p-4 ring-1 transition ${
+              className={`flex items-start gap-3 rounded-xl p-3 ring-1 ${
                 n.read ? "bg-panel ring-white/5" : "bg-panel2 ring-neon-violet/40"
               }`}
             >

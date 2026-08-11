@@ -52,7 +52,7 @@ export default function FamilyDetailPage() {
     );
   }
 
-  const nextLevelAt = { 1: 2000, 2: 10000, 3: 5000, 4: 10000 }[family.level];
+  const nextLevelAt = { 1: 2000, 2: 10000, 3: 50000, 4: 200000 }[family.level];
   const isLeader = family.leaderId === user.uid;
 
   return (
@@ -92,7 +92,7 @@ export default function FamilyDetailPage() {
           {family.members?.map((m) => (
             <div
               key={m.uid}
-              className="flex items-center justify-between premium-card p-3"
+              className="flex items-center justify-between rounded-xl bg-panel p-3 ring-1 ring-white/5"
             >
               <span className="text-sm text-ink">{m.name}</span>
               {m.uid === family.leaderId && (

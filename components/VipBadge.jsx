@@ -11,7 +11,7 @@ export default function VipBadge({ vipLevel = 0, compact = false }) {
       style={{ backgroundColor: `${tier.color}22`, color: tier.color }}
       title={tier.name}
     >
-      {tier.name === "SVIP" ? "★" : "◆"} {compact ? tier.name.replace(" ", "") : tier.name}
+      {tier.level === 4 ? "★" : "◆"} {compact ? tier.name.replace(" ", "") : tier.name}
     </span>
   );
 }

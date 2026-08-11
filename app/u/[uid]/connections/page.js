@@ -1,29 +1,13 @@
 "use client";
 
-import { Suspense, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter, useParams, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { useAuth } from "@/lib/AuthContext";
 import { listenFollowers, listenFollowing } from "@/lib/follow";
 import UserRow from "@/components/UserRow";
 
-// See app/wallet/recharge/page.js for why this needs a Suspense wrapper:
-// useSearchParams() requires one, or a static build can fail on this page.
 export default function ConnectionsPage() {
-  return (
-    <Suspense
-      fallback={
-        <main className="flex min-h-screen items-center justify-center bg-void">
-          <p className="text-mist text-sm">Loading…</p>
-        </main>
-      }
-    >
-      <ConnectionsContent />
-    </Suspense>
-  );
-}
-
-function ConnectionsContent() {
   const { uid } = useParams();
   const searchParams = useSearchParams();
   const { user, loading } = useAuth();

@@ -56,7 +56,7 @@ export default function EntranceBanner({ roomId }) {
 
   if (!current) return null;
 
-  const hasRide = !!(current.vehicleVideo || current.vehicleImage);
+  const hasRide = !!current.vehicleImage;
 
   return (
     <div className="pointer-events-none absolute left-0 right-0 top-16 z-30 h-16 overflow-hidden">
@@ -68,23 +68,12 @@ export default function EntranceBanner({ roomId }) {
         } entrance-${phase}`}
       >
         {hasRide ? (
-          current.vehicleVideo ? (
-            <video
-              src={current.vehicleVideo}
-              className="h-12 w-20 rounded-full object-cover ring-2 ring-white/50"
-              autoPlay
-              loop
-              muted
-              playsInline
-            />
-          ) : (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={current.vehicleImage}
-              alt=""
-              className="h-12 w-20 rounded-full object-cover ring-2 ring-white/50"
-            />
-          )
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={current.vehicleImage}
+            alt=""
+            className="h-12 w-20 rounded-full object-cover ring-2 ring-white/50"
+          />
         ) : (
           <span className="flex h-11 w-11 items-center justify-center rounded-full bg-panel2 text-lg ring-2 ring-white/30">
             👋

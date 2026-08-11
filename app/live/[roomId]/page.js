@@ -6,26 +6,17 @@ import { useAuth } from "@/lib/AuthContext";
 import { listenRoom, endRoom, announceEntrance } from "@/lib/rooms";
 import { findBackground } from "@/lib/backgrounds";
 import { findItem } from "@/lib/decorations";
-import { joinRoomPresence, removeCoHost } from "@/lib/coHost";
-import {
-  createAgoraClient,
-  createCameraTrack,
-  createMicTrack,
-  createCustomAudioTrack,
-  fetchAgoraToken,
-  AGORA_APP_ID,
-} from "@/lib/agora";
-import { applyVoiceEffect } from "@/lib/voiceEffects";
+import { joinRoomPresence, removeCoHost, listenParticipants } from "@/lib/coHost";
+import { createAgoraClient, createMicAndCameraTracks, fetchAgoraToken, AGORA_APP_ID } from "@/lib/agora";
 import LiveChat from "@/components/LiveChat";
 import GiftBar from "@/components/GiftBar";
 import GiftFeed from "@/components/GiftFeed";
-import GiftPopup from "@/components/GiftPopup";
+import FloatingHearts from "@/components/FloatingHearts";
 import EntranceBanner from "@/components/EntranceBanner";
 import BackgroundPicker from "@/components/BackgroundPicker";
 import AddGuestButton from "@/components/AddGuestButton";
 import CoHostInvitePrompt from "@/components/CoHostInvitePrompt";
-import VoiceEffectPicker from "@/components/VoiceEffectPicker";
-import Link from "next/link";
+import FollowButton from "@/components/FollowButton";
 
 // Video stage always has two named slots: "primary" (the host) and
 // "secondary" (the co-host, only shown once someone accepts an invite).
@@ -44,17 +35,16 @@ export default function LiveRoomPage() {
   const [micOn, setMicOn] = useState(true);
   const [error, setError] = useState("");
   const [showGifts, setShowGifts] = useState(false);
-  const [voiceUnsupported, setVoiceUnsupported] = useState(false);
+  const [shareMsg, setShareMsg] = useState("");
+  const [viewerCount, setViewerCount] = useState(0);
+  const [hearts, setHearts] = useState([]);
+  const heartIdRef = useRef(0);
 
   const clientRef = useRef(null);
-  const localTracksRef = useRef({ cam: null, mic: null }); // raw tracks — mic here is always what mic-on/off toggles
-  const publishedAudioRef = useRef(null); // what's actually published as audio (raw mic, or the voice-effect track)
-  const effectStopRef = useRef(null); // tears down the current Web Audio effect graph, if any
+  const localTracksRef = useRef({ cam: null, mic: null });
   const primaryRef = useRef(null); // host's video slot
   const secondaryRef = useRef(null); // co-host's video slot
   const roomRef = useRef(null); // latest room doc, read inside Agora event handlers (avoid stale closures)
-
-  const equippedEffect = profile?.equippedVoiceEffect || "original";
 
   useEffect(() => {
     roomRef.current = room;
@@ -76,6 +66,13 @@ export default function LiveRoomPage() {
     return () => leave();
   }, [roomId, user, profile?.displayName]);
 
+  // Viewer count badge — same presence data AddGuestButton uses to build
+  // its invite list, just counted here for display.
+  useEffect(() => {
+    const unsub = listenParticipants(roomId, (list) => setViewerCount(list.length));
+    return () => unsub();
+  }, [roomId]);
+
   const isHost = room && user && room.hostUid === user.uid;
   const isCoHost = room && user && room.coHostUid === user.uid;
   const onStage = isHost || isCoHost;
@@ -94,7 +91,6 @@ export default function LiveRoomPage() {
       vehicleId: vehicle?.id,
       vehicleName: vehicle?.name,
       vehicleImage: vehicle?.image,
-      vehicleVideo: vehicle?.video,
     });
   }, [room?.id, user?.uid]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -155,41 +151,14 @@ export default function LiveRoomPage() {
 
     return () => {
       cancelled = true;
-      effectStopRef.current?.();
-      effectStopRef.current = null;
       const { cam, mic } = localTracksRef.current;
       cam?.close();
       mic?.close();
-      if (publishedAudioRef.current && publishedAudioRef.current !== mic) {
-        publishedAudioRef.current.close?.();
-      }
-      publishedAudioRef.current = null;
       localTracksRef.current = { cam: null, mic: null };
       clientRef.current?.leave();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [room?.id]);
-
-  // Builds the audio track to publish given the currently equipped voice
-  // effect — either the raw mic track (Original, or effect unsupported)
-  // or a processed track running through the Web Audio graph.
-  async function buildPublishableAudio(micTrack) {
-    if (equippedEffect === "original") {
-      setVoiceUnsupported(false);
-      return micTrack;
-    }
-    try {
-      const raw = micTrack.getMediaStreamTrack();
-      const { track: processed, stop } = await applyVoiceEffect(raw, equippedEffect);
-      effectStopRef.current = stop;
-      setVoiceUnsupported(false);
-      return await createCustomAudioTrack(processed);
-    } catch (e) {
-      console.error("Voice effect unavailable:", e);
-      setVoiceUnsupported(true);
-      return micTrack;
-    }
-  }
 
   // Publish (or unpublish) my own camera whenever I go on/off stage —
   // covers both the original host and someone who just accepted a
@@ -203,33 +172,30 @@ export default function LiveRoomPage() {
       if (onStage && !localTracksRef.current.cam) {
         try {
           await client.setClientRole("host");
-          const camTrack = await createCameraTrack();
-          const micTrack = await createMicTrack();
+          // Single combined request (one browser permission prompt for
+          // both devices) instead of two sequential ones — see
+          // createMicAndCameraTracks in lib/agora.js for why.
+          const { micTrack, camTrack } = await createMicAndCameraTracks();
           if (cancelled) {
             camTrack.close();
             micTrack.close();
             return;
           }
           localTracksRef.current = { cam: camTrack, mic: micTrack };
-          const audioToPublish = await buildPublishableAudio(micTrack);
-          if (cancelled) return;
-          publishedAudioRef.current = audioToPublish;
           const slot = isHost ? primaryRef.current : secondaryRef.current;
           if (slot) camTrack.play(slot);
-          await client.publish([camTrack, audioToPublish]);
+          await client.publish([camTrack, micTrack]);
         } catch (err) {
           console.error(err);
           const detail = err?.message || err?.code || "unknown error";
-          setError(`Could not start your camera (${detail}).`);
+          // One combined permission request means we can't always tell
+          // which device it was, so the message covers both rather than
+          // wrongly blaming the camera when it was actually the mic.
+          setError(`Could not start your camera/microphone (${detail}).`);
         }
       } else if (!onStage && localTracksRef.current.cam) {
         const { cam, mic } = localTracksRef.current;
-        const publishedAudio = publishedAudioRef.current || mic;
-        await client.unpublish([cam, publishedAudio]).catch(() => {});
-        effectStopRef.current?.();
-        effectStopRef.current = null;
-        if (publishedAudio !== mic) publishedAudio.close?.();
-        publishedAudioRef.current = null;
+        await client.unpublish([cam, mic]).catch(() => {});
         cam.close();
         mic.close();
         localTracksRef.current = { cam: null, mic: null };
@@ -244,36 +210,43 @@ export default function LiveRoomPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [onStage, joined]);
 
-  // Swap the live audio track whenever the equipped voice effect changes
-  // while already on stage (initial publish above handles the first join).
-  useEffect(() => {
-    const client = clientRef.current;
-    const mic = localTracksRef.current.mic;
-    if (!client || !onStage || !mic) return;
-    let cancelled = false;
-
-    async function swap() {
-      const oldAudio = publishedAudioRef.current || mic;
-      effectStopRef.current?.();
-      effectStopRef.current = null;
-      const audioToPublish = await buildPublishableAudio(mic);
-      if (cancelled) return;
-      await client.unpublish([oldAudio]).catch(() => {});
-      if (oldAudio !== mic) oldAudio.close?.();
-      publishedAudioRef.current = audioToPublish;
-      await client.publish([audioToPublish]);
-    }
-    swap();
-    return () => {
-      cancelled = true;
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [equippedEffect]);
-
   async function handleEndOrLeave() {
     if (isHost) await endRoom(roomId);
     else if (isCoHost) await removeCoHost(roomId); // leaving video, not the whole room
     router.push("/rooms");
+  }
+
+  async function handleShare() {
+    const url = `${window.location.origin}/live/${roomId}`;
+    const shareData = { title: room?.title || "Milaap Live", text: `${room?.hostName} is live on Milaap — join in!`, url };
+    if (navigator.share) {
+      try {
+        await navigator.share(shareData);
+      } catch (err) {
+        // AbortError just means the user closed the native share sheet — not a real failure
+        if (err?.name !== "AbortError") console.error(err);
+      }
+      return;
+    }
+    try {
+      await navigator.clipboard.writeText(url);
+      setShareMsg("Link copied!");
+      setTimeout(() => setShareMsg(""), 2000);
+    } catch (err) {
+      console.error(err);
+      setShareMsg("Couldn't copy link");
+      setTimeout(() => setShareMsg(""), 2000);
+    }
+  }
+
+  function sendHeart() {
+    const id = heartIdRef.current++;
+    const emoji = ["❤️", "💖", "💕", "💗"][id % 4];
+    const x = 15 + Math.random() * 70; // keep clear of the edges
+    setHearts((h) => [...h, { id, emoji, x }]);
+    setTimeout(() => {
+      setHearts((h) => h.filter((heart) => heart.id !== id));
+    }, 2600);
   }
 
   function toggleMic() {
@@ -295,15 +268,20 @@ export default function LiveRoomPage() {
 
   return (
     <main className="flex min-h-screen flex-col bg-void" style={{ background: bg.css }}>
-      <header className="flex items-center justify-between px-4 py-3 pt-safe">
+      <header className="flex items-center justify-between px-4 py-3">
         <div className="flex items-center gap-3">
           <button onClick={handleEndOrLeave} aria-label="Back" className="text-lg text-ink/80">
             ←
           </button>
           <div>
             <p className="font-display text-sm font-bold text-ink">{room.title}</p>
-            <p className="text-xs text-mist">Hosted by {room.hostName}</p>
+            <p className="text-xs text-mist">
+              Hosted by {room.hostName} · 👀 {viewerCount}
+            </p>
           </div>
+          {!isHost && (
+            <FollowButton target={{ uid: room.hostUid, displayName: room.hostName }} />
+          )}
         </div>
         <div className="flex items-center gap-2">
           {isHost && (
@@ -316,6 +294,13 @@ export default function LiveRoomPage() {
           )}
           {isHost && <BackgroundPicker roomId={String(roomId)} current={room.background} />}
           <button
+            onClick={handleShare}
+            aria-label="Share this room"
+            className="flex h-8 w-8 items-center justify-center rounded-full bg-panel text-sm ring-1 ring-white/10"
+          >
+            📤
+          </button>
+          <button
             onClick={handleEndOrLeave}
             className="rounded-full bg-panel px-3 py-1.5 text-xs font-semibold text-neon-pink ring-1 ring-neon-pink/30"
           >
@@ -323,6 +308,9 @@ export default function LiveRoomPage() {
           </button>
         </div>
       </header>
+      {shareMsg && (
+        <p className="mx-4 -mt-1 mb-1 text-center text-[11px] text-mist">{shareMsg}</p>
+      )}
 
       {!AGORA_APP_ID && (
         <p className="mx-4 rounded-lg bg-panel p-3 text-xs text-gold">
@@ -330,26 +318,12 @@ export default function LiveRoomPage() {
         </p>
       )}
       {error && <p className="mx-4 rounded-lg bg-panel p-3 text-xs text-neon-pink">{error}</p>}
-      {voiceUnsupported && equippedEffect !== "original" && (
-        <p className="mx-4 rounded-lg bg-panel p-3 text-xs text-neon-pink">
-          Voice effects unavailable on this device — using standard mic.
-        </p>
-      )}
 
       {/* Video stage — two slots, side by side once a co-host joins */}
-      <div className="mx-4 mt-2 room-toolbar flex items-center gap-2 overflow-x-auto p-2">
-        <Link href="/wallet/recharge" className="room-action shrink-0">💰<span className="mt-1 block text-[9px] font-bold text-gold">Recharge</span></Link>
-        <button onClick={() => setShowGifts(true)} className="room-action shrink-0">🎁<span className="mt-1 block text-[9px] font-bold text-ink">Gifts</span></button>
-        <Link href="/profile/frames" className="room-action shrink-0">🖼️<span className="mt-1 block text-[9px] font-bold text-ink">Frame</span></Link>
-        <Link href="/profile/vehicles" className="room-action shrink-0">🚘<span className="mt-1 block text-[9px] font-bold text-ink">Ride</span></Link>
-        <Link href="/vip" className="room-action shrink-0">👑<span className="mt-1 block text-[9px] font-bold text-gold">SVIP</span></Link>
-        <Link href="/profile/friends" className="room-action shrink-0">💞<span className="mt-1 block text-[9px] font-bold text-ink">Friends</span></Link>
-      </div>
-
       <div className="relative mx-4 aspect-[9/16] max-h-[52vh] overflow-hidden rounded-2xl bg-panel">
         <GiftFeed roomId={String(roomId)} />
         <EntranceBanner roomId={String(roomId)} />
-        <GiftPopup roomId={String(roomId)} />
+        <FloatingHearts hearts={hearts} />
 
         <div className="flex h-full w-full">
           <div ref={primaryRef} className="h-full w-full flex-1" />
@@ -394,7 +368,7 @@ export default function LiveRoomPage() {
       )}
 
       {onStage && (
-        <div className="mx-4 mt-3 flex justify-center gap-3">
+        <div className="mx-4 mt-3 flex justify-center">
           <button
             onClick={toggleMic}
             className={`rounded-full px-4 py-2 text-xs font-semibold ${
@@ -403,13 +377,6 @@ export default function LiveRoomPage() {
           >
             {micOn ? "🎤 Mic On" : "🔇 Mic Off"}
           </button>
-          <VoiceEffectPicker
-            uid={user.uid}
-            coins={profile?.coins ?? 0}
-            ownedEffects={profile?.ownedVoiceEffects}
-            equippedEffect={equippedEffect}
-            unsupported={voiceUnsupported}
-          />
         </div>
       )}
 
@@ -420,6 +387,7 @@ export default function LiveRoomPage() {
           uid={user.uid}
           name={profile?.displayName || "User"}
           onOpenGifts={!isHost ? () => setShowGifts(true) : undefined}
+          onSendHeart={sendHeart}
         />
       </div>
     </main>

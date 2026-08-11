@@ -8,7 +8,6 @@ import { vipLevelForSpend } from "@/lib/vip";
 import BottomNav from "@/components/BottomNav";
 import HostLevelBadge from "@/components/HostLevelBadge";
 import VipBadge from "@/components/VipBadge";
-import PremiumCard from "@/components/PremiumCard";
 
 export default function LeaderboardPage() {
   const { user, loading } = useAuth();
@@ -51,7 +50,10 @@ export default function LeaderboardPage() {
 
       <section className="mx-5 mt-4 space-y-2">
         {rows.map((r, i) => (
-          <PremiumCard key={r.id} className="flex items-center justify-between p-3">
+          <div
+            key={r.id}
+            className="flex items-center justify-between rounded-xl bg-panel p-3 ring-1 ring-white/5"
+          >
             <div className="flex items-center gap-3">
               <span className={`w-6 text-center font-display text-sm font-extrabold ${rankColor(i)}`}>
                 {i + 1}
@@ -73,7 +75,7 @@ export default function LeaderboardPage() {
             <span className={`text-sm font-bold ${tab === "earners" ? "text-gold" : "text-diamond"}`}>
               {tab === "earners" ? `◆ ${r.diamonds ?? 0}` : `Rs ${r.totalRechargedRs ?? 0}`}
             </span>
-          </PremiumCard>
+          </div>
         ))}
       </section>
 
@@ -86,8 +88,8 @@ function TabButton({ active, onClick, children }) {
   return (
     <button
       onClick={onClick}
-      className={`flex-1 rounded-full py-2 text-xs font-semibold transition-colors ${
-        active ? "premium-btn !py-2" : "bg-panel text-mist ring-1 ring-white/10"
+      className={`flex-1 rounded-full py-2 text-xs font-semibold ${
+        active ? "bg-glow-gradient text-ink" : "bg-panel text-mist ring-1 ring-white/10"
       }`}
     >
       {children}

@@ -4,8 +4,8 @@
   "description": "Go live, join audio rooms, and earn rewards.",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#0A0806",
-  "theme_color": "#0A0806",
+  "background_color": "#0B0714",
+  "theme_color": "#0B0714",
   "orientation": "portrait",
   "icons": [
     { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },

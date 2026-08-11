@@ -9,15 +9,18 @@ import {
   listenPendingRecharges,
   approveRecharge,
   rejectRecharge,
+  listenPendingWithdrawals,
+  approveWithdraw,
+  rejectWithdraw,
 } from "@/lib/wallet";
 import { listenActiveRooms, endRoom } from "@/lib/rooms";
 import { listenPendingReports, resolveReport } from "@/lib/moderation";
-import { getReferralConfig, setReferralConfig, DEFAULT_REFERRAL_COINS, DEFAULT_REFERRAL_MONTHS } from "@/lib/referral";
 
 export default function AdminPage() {
   const { user, profile, loading } = useAuth();
   const router = useRouter();
   const [recharges, setRecharges] = useState([]);
+  const [withdrawals, setWithdrawals] = useState([]);
   const [rooms, setRooms] = useState([]);
   const [reports, setReports] = useState([]);
   const [listenerErrors, setListenerErrors] = useState({});
@@ -25,12 +28,6 @@ export default function AdminPage() {
   const [roleTargetUid, setRoleTargetUid] = useState("");
   const [roleToGrant, setRoleToGrant] = useState(ROLES.MODERATOR);
   const [roleMessage, setRoleMessage] = useState(null);
-
-  const [referral, setReferral] = useState(null); // { enabled, coinsPerReferral, expiresAt }
-  const [referralCoins, setReferralCoins] = useState(DEFAULT_REFERRAL_COINS);
-  const [referralMonths, setReferralMonths] = useState(DEFAULT_REFERRAL_MONTHS);
-  const [referralBusy, setReferralBusy] = useState(false);
-  const [referralMessage, setReferralMessage] = useState(null);
 
   const role = effectiveRole(user, profile);
   const isAdmin = hasAtLeastRole(role, ROLES.ADMIN);
@@ -47,9 +44,11 @@ export default function AdminPage() {
       setListenerErrors((prev) => ({ ...prev, [key]: err?.message || String(err) }));
     const unsub1 = listenPendingRecharges(setRecharges, setErr("recharges"));
     const unsub2 = listenActiveRooms(setRooms, setErr("rooms"));
+    const unsub3 = listenPendingWithdrawals(setWithdrawals, setErr("withdrawals"));
     return () => {
       unsub1();
       unsub2();
+      unsub3();
     };
   }, [isAdmin]);
 
@@ -59,35 +58,6 @@ export default function AdminPage() {
       setListenerErrors((prev) => ({ ...prev, reports: err?.message || String(err) }))
     );
   }, [isModerator]);
-
-  useEffect(() => {
-    if (!isAdmin) return;
-    getReferralConfig()
-      .then((cfg) => {
-        setReferral(cfg);
-        setReferralCoins(cfg.coinsPerReferral || DEFAULT_REFERRAL_COINS);
-      })
-      .catch((err) => setReferralMessage(err.message));
-  }, [isAdmin]);
-
-  async function handleReferralToggle(turnOn) {
-    setReferralBusy(true);
-    setReferralMessage(null);
-    try {
-      await setReferralConfig({
-        turnOn,
-        coinsPerReferral: Number(referralCoins) || DEFAULT_REFERRAL_COINS,
-        months: Number(referralMonths) || DEFAULT_REFERRAL_MONTHS,
-      });
-      const fresh = await getReferralConfig();
-      setReferral(fresh);
-      setReferralMessage(turnOn ? "Referral offer activated." : "Referral offer paused.");
-    } catch (err) {
-      setReferralMessage(err.message);
-    } finally {
-      setReferralBusy(false);
-    }
-  }
 
   async function handleGrantRole(e) {
     e.preventDefault();
@@ -128,6 +98,23 @@ export default function AdminPage() {
     }
   }
 
+  async function handleApproveWithdraw(req) {
+    setBusyId(req.id);
+    try {
+      await approveWithdraw(req.id);
+    } finally {
+      setBusyId(null);
+    }
+  }
+
+  async function handleRejectWithdraw(req) {
+    setBusyId(req.id);
+    try {
+      await rejectWithdraw(req);
+    } finally {
+      setBusyId(null);
+    }
+  }
 
   if (loading || !isModerator) {
     return (
@@ -173,26 +160,21 @@ export default function AdminPage() {
           ) : (
             <div className="mt-3 space-y-2">
               {recharges.map((r) => (
-                <div key={r.id} className="premium-card p-3">
+                <div key={r.id} className="rounded-xl bg-panel p-3 ring-1 ring-white/5">
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-sm font-semibold text-ink">{r.name}</p>
                       <p className="text-xs text-mist">
                         ● {r.coins} coins · Rs {r.priceRs} · {r.method}
                       </p>
-                      {r.reference ? (
+                      {r.reference && (
                         <p className="text-xs text-mist">Ref: {r.reference}</p>
-                      ) : (
-                        <p className="text-xs font-semibold text-neon-pink">
-                          ⚠ No Transaction ID — verify payment manually before approving
-                        </p>
                       )}
                     </div>
                     <div className="flex gap-2">
                       <button
                         onClick={() => handleApprove(r)}
-                        disabled={busyId === r.id || !r.reference}
-                        title={!r.reference ? "Cannot approve — Transaction ID missing" : ""}
+                        disabled={busyId === r.id}
                         className="rounded-full bg-emerald-500 px-3 py-1.5 text-xs font-semibold text-ink disabled:opacity-60"
                       >
                         Approve
@@ -203,6 +185,54 @@ export default function AdminPage() {
                         className="rounded-full bg-panel2 px-3 py-1.5 text-xs font-semibold text-neon-pink ring-1 ring-neon-pink/30 disabled:opacity-60"
                       >
                         Reject
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
+      )}
+
+      {isAdmin && (
+        <section className="mt-8">
+          <h2 className="font-display text-sm font-bold text-ink">
+            Pending Withdrawals ({withdrawals.length})
+          </h2>
+          {listenerErrors.withdrawals && (
+            <p className="mt-2 text-xs text-neon-pink">
+              ⚠ Load nahi ho saka: {listenerErrors.withdrawals}
+            </p>
+          )}
+          {withdrawals.length === 0 ? (
+            <p className="mt-3 text-xs text-mist">Nothing pending.</p>
+          ) : (
+            <div className="mt-3 space-y-2">
+              {withdrawals.map((w) => (
+                <div key={w.id} className="rounded-xl bg-panel p-3 ring-1 ring-white/5">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-semibold text-ink">{w.name}</p>
+                      <p className="text-xs text-mist">
+                        ◆ {w.diamonds} diamonds → Rs {w.payoutRs} · {w.method}
+                      </p>
+                      <p className="text-xs text-mist">Account: {w.accountNumber}</p>
+                    </div>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => handleApproveWithdraw(w)}
+                        disabled={busyId === w.id}
+                        className="rounded-full bg-emerald-500 px-3 py-1.5 text-xs font-semibold text-ink disabled:opacity-60"
+                      >
+                        Mark Paid
+                      </button>
+                      <button
+                        onClick={() => handleRejectWithdraw(w)}
+                        disabled={busyId === w.id}
+                        className="rounded-full bg-panel2 px-3 py-1.5 text-xs font-semibold text-neon-pink ring-1 ring-neon-pink/30 disabled:opacity-60"
+                      >
+                        Reject & Refund
                       </button>
                     </div>
                   </div>
@@ -230,7 +260,7 @@ export default function AdminPage() {
               {rooms.map((r) => (
                 <div
                   key={r.id}
-                  className="flex items-center justify-between premium-card p-3"
+                  className="flex items-center justify-between rounded-xl bg-panel p-3 ring-1 ring-white/5"
                 >
                   <div>
                     <p className="text-sm font-semibold text-ink">{r.title}</p>
@@ -265,7 +295,7 @@ export default function AdminPage() {
         ) : (
           <div className="mt-3 space-y-2">
             {reports.map((r) => (
-              <div key={r.id} className="premium-card p-3">
+              <div key={r.id} className="rounded-xl bg-panel p-3 ring-1 ring-white/5">
                 <p className="text-sm font-semibold text-ink">
                   Reported: {r.targetName || r.targetUid}
                 </p>
@@ -284,7 +314,7 @@ export default function AdminPage() {
                   <button
                     onClick={() => handleResolveReport(r.id, "dismissed")}
                     disabled={busyId === r.id}
-                    className="premium-chip px-3 py-1.5 text-xs font-semibold text-mist disabled:opacity-60"
+                    className="rounded-full bg-panel2 px-3 py-1.5 text-xs font-semibold text-mist ring-1 ring-white/10 disabled:opacity-60"
                   >
                     Dismiss
                   </button>
@@ -295,81 +325,6 @@ export default function AdminPage() {
         )}
       </section>
 
-      {isAdmin && (
-        <section className="mt-8">
-          <h2 className="font-display text-sm font-bold text-ink">Referral Program</h2>
-          <p className="mt-1 text-xs text-mist">
-            Controls the "Invite Friends" reward shown on /invite. When ON, a
-            referrer gets the coin amount below the moment their invited
-            friend signs up — paid server-side by the awardReferralBonus
-            Cloud Function, never trusted from the browser.
-          </p>
-          <div className="mt-3 premium-card space-y-3 p-3">
-            <div className="flex items-center justify-between">
-              <span className="text-xs text-mist">Status</span>
-              <span
-                className={`rounded-full px-3 py-1 text-xs font-bold ${
-                  referral?.enabled
-                    ? "bg-emerald-500/20 text-emerald-400"
-                    : "bg-panel2 text-mist"
-                }`}
-              >
-                {referral === null ? "…" : referral.enabled ? "ON" : "OFF"}
-              </span>
-            </div>
-            {referral?.expiresAt && (
-              <p className="text-[11px] text-mist">
-                {referral.enabled ? "Runs until " : "Last run ended "}
-                {referral.expiresAt.toLocaleDateString(undefined, {
-                  day: "numeric",
-                  month: "short",
-                  year: "numeric",
-                })}
-              </p>
-            )}
-            <div className="flex gap-2">
-              <label className="flex-1 text-xs text-mist">
-                Coins per referral
-                <input
-                  type="number"
-                  min="0"
-                  value={referralCoins}
-                  onChange={(e) => setReferralCoins(e.target.value)}
-                  className="mt-1 w-full rounded-lg bg-panel2 px-3 py-2 text-sm text-ink outline-none ring-1 ring-white/10"
-                />
-              </label>
-              <label className="flex-1 text-xs text-mist">
-                Run for (months)
-                <input
-                  type="number"
-                  min="1"
-                  value={referralMonths}
-                  onChange={(e) => setReferralMonths(e.target.value)}
-                  className="mt-1 w-full rounded-lg bg-panel2 px-3 py-2 text-sm text-ink outline-none ring-1 ring-white/10"
-                />
-              </label>
-            </div>
-            <div className="flex gap-2">
-              <button
-                onClick={() => handleReferralToggle(true)}
-                disabled={referralBusy}
-                className="flex-1 rounded-full bg-glow-gradient py-2.5 text-sm font-bold text-ink disabled:opacity-60"
-              >
-                {referral?.enabled ? "Restart new run" : `Activate for ${referralMonths} months`}
-              </button>
-              <button
-                onClick={() => handleReferralToggle(false)}
-                disabled={referralBusy || !referral?.enabled}
-                className="flex-1 rounded-full bg-panel2 py-2.5 text-sm font-bold text-neon-pink ring-1 ring-neon-pink/30 disabled:opacity-60"
-              >
-                Turn Off
-              </button>
-            </div>
-            {referralMessage && <p className="text-xs text-mist">{referralMessage}</p>}
-          </div>
-        </section>
-      )}
-
       {isSuperAdmin && (
         <section className="mt-8">
           <h2 className="font-display text-sm font-bold text-ink">Manage Team Roles</h2>
@@ -377,7 +332,7 @@ export default function AdminPage() {
             Grant moderator or admin access to another user by their UID (find it on their
             profile page URL: /u/&lt;uid&gt;).
           </p>
-          <form onSubmit={handleGrantRole} className="mt-3 space-y-2 premium-card p-3">
+          <form onSubmit={handleGrantRole} className="mt-3 space-y-2 rounded-xl bg-panel p-3 ring-1 ring-white/5">
             <input
               value={roleTargetUid}
               onChange={(e) => setRoleTargetUid(e.target.value)}

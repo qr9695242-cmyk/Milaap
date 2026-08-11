@@ -36,7 +36,7 @@ export default function HelpPage() {
           href={`https://wa.me/${SUPPORT_CONFIG.supportWhatsapp.replace("+", "")}`}
           target="_blank"
           rel="noreferrer"
-          className="flex items-center justify-between premium-card p-4"
+          className="flex items-center justify-between rounded-xl bg-panel p-4 ring-1 ring-white/5"
         >
           <div>
             <p className="text-sm font-semibold text-ink">WhatsApp Support</p>
@@ -49,7 +49,7 @@ export default function HelpPage() {
 
         <a
           href={`mailto:${SUPPORT_CONFIG.supportEmail}`}
-          className="flex items-center justify-between premium-card p-4"
+          className="flex items-center justify-between rounded-xl bg-panel p-4 ring-1 ring-white/5"
         >
           <div>
             <p className="text-sm font-semibold text-ink">Email Support</p>
@@ -59,13 +59,6 @@ export default function HelpPage() {
             Email
           </span>
         </a>
-
-        {SUPPORT_CONFIG.supportAddress && (
-          <div className="premium-card p-4">
-            <p className="text-sm font-semibold text-ink">Address</p>
-            <p className="mt-1 text-xs text-mist">{SUPPORT_CONFIG.supportAddress}</p>
-          </div>
-        )}
       </div>
 
       <BottomNav />

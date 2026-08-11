@@ -1,18 +1,10 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useAuth } from "@/lib/AuthContext";
-import { effectiveRole, hasAtLeastRole, ROLES } from "@/lib/roles";
-import {
-  FRAME_CATALOG,
-  RARITY_STYLE,
-  purchaseDecoration,
-  equipDecoration,
-  uploadDecorationMedia,
-  listenDecorationMedia,
-} from "@/lib/decorations";
+import { FRAME_CATALOG, RARITY_STYLE, purchaseDecoration, equipDecoration } from "@/lib/decorations";
 import BottomNav from "@/components/BottomNav";
 
 export default function FramesShopPage() {
@@ -21,42 +13,10 @@ export default function FramesShopPage() {
   const [busyId, setBusyId] = useState(null);
   const [error, setError] = useState(null);
   const [message, setMessage] = useState(null);
-  const [media, setMedia] = useState({});
-  const [uploadingId, setUploadingId] = useState(null);
-  const fileInputRef = useRef(null);
-  const pendingItemRef = useRef(null);
 
   useEffect(() => {
     if (!loading && !user) router.replace("/login");
   }, [loading, user, router]);
-
-  useEffect(() => {
-    const unsub = listenDecorationMedia("frame", setMedia);
-    return () => unsub();
-  }, []);
-
-  function openUploadFor(item) {
-    pendingItemRef.current = item;
-    fileInputRef.current?.click();
-  }
-
-  async function handleFileChosen(e) {
-    const file = e.target.files?.[0];
-    const item = pendingItemRef.current;
-    e.target.value = "";
-    if (!file || !item) return;
-    setError(null);
-    setMessage(null);
-    setUploadingId(item.id);
-    try {
-      await uploadDecorationMedia("frame", item.id, file, user, profile);
-      setMessage(`${item.name} media updated!`);
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setUploadingId(null);
-    }
-  }
 
   if (loading || !user) {
     return (
@@ -69,7 +29,6 @@ export default function FramesShopPage() {
   const owned = profile?.ownedFrames || [];
   const equipped = profile?.equippedFrame || null;
   const coins = profile?.coins ?? 0;
-  const isAdmin = hasAtLeastRole(effectiveRole(user, profile), ROLES.ADMIN);
 
   async function handleAction(item) {
     setError(null);
@@ -114,53 +73,24 @@ export default function FramesShopPage() {
         </p>
       )}
 
-      <input
-        ref={fileInputRef}
-        type="file"
-        accept="image/*,video/*"
-        className="hidden"
-        onChange={handleFileChosen}
-      />
-
       <section className="mx-5 mt-4 grid grid-cols-3 gap-3">
-        {FRAME_CATALOG.map((rawItem) => {
-          const override = media[rawItem.id];
-          const item = override ? { ...rawItem, ...override } : rawItem;
+        {FRAME_CATALOG.map((item) => {
           const isOwned = item.free || owned.includes(item.id);
           const isEquipped = item.free ? !equipped : equipped === item.id;
           const style = RARITY_STYLE[item.rarity];
           return (
             <div
               key={item.id}
-              className={`premium-card relative flex flex-col items-center p-3 ${style.glow}`}
+              className={`flex flex-col items-center rounded-xl bg-panel p-3 ring-1 ${style.ring} ${style.glow}`}
             >
-              {!item.free && (
-                <button
-                  onClick={() => openUploadFor(item)}
-                  disabled={!isAdmin || uploadingId === item.id}
-                  aria-label="Upload photo or video"
-                  className="absolute right-1.5 top-1.5 z-10 flex h-6 w-6 items-center justify-center rounded-full bg-black/60 text-[11px] text-ink ring-1 ring-white/20 disabled:opacity-60"
-                >
-                  {uploadingId === item.id ? "…" : "+"}
-                </button>
-              )}
               <div
-                className="flex h-16 w-16 items-center justify-center rounded-2xl text-2xl ring-4 ring-offset-2 ring-offset-panel"
+                className="flex h-16 w-16 items-center justify-center rounded-full text-2xl ring-4 ring-offset-2 ring-offset-panel"
                 style={{
                   background: item.free ? "rgba(255,255,255,0.05)" : item.gradient,
                   ringColor: "transparent",
                 }}
               >
-                {item.video ? (
-                  <video
-                    src={item.video}
-                    className="h-14 w-14 object-contain"
-                    autoPlay
-                    loop
-                    muted
-                    playsInline
-                  />
-                ) : item.image ? (
+                {item.image ? (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img src={item.image} alt={item.name} className="h-14 w-14 object-contain" draggable={false} />
                 ) : item.free ? (
