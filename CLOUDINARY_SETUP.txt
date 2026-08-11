@@ -1,0 +1,16 @@
+Milaap Cloudinary setup
+========================
+Cloud name: hvna6ugg
+Unsigned upload preset: milaap_upload
+
+The app now uploads:
+- Profile avatars -> Cloudinary
+- Frame/vehicle decoration media -> Cloudinary
+- DM voice messages -> Cloudinary
+
+Firebase Storage is no longer used by the application and is no longer
+included in firebase.json deployment configuration.
+
+The Cloudinary cloud name and unsigned preset are public client-side values.
+The Cloudinary API secret must NOT be placed in the browser, .env NEXT_PUBLIC
+variables, GitHub, or this project.
