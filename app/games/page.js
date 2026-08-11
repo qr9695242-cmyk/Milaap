@@ -1,0 +1,5 @@
+"use client";
+import Link from "next/link";
+import { GAME_CATALOG } from "@/lib/premiumCatalog";
+import BottomNav from "@/components/BottomNav";
+export default function GamesPage(){return <main className="min-h-screen bg-void pb-28"><header className="px-5 pt-7"><Link href="/profile" className="text-ink/70">‹</Link><h1 className="mt-2 font-display text-2xl font-black text-ink">🎮 Premium Games</h1><p className="mt-1 text-xs text-mist">18 premium game rooms • 2026 UI</p></header><section className="mx-5 mt-5 grid grid-cols-2 gap-3">{GAME_CATALOG.map(g=><Link key={g.id} href={g.href} className="overflow-hidden rounded-2xl bg-panel ring-1 ring-white/5 active:scale-[.98]"><div className="flex h-24 items-center justify-center bg-gradient-to-br from-neon-violet/30 to-neon-pink/20 text-4xl">{g.emoji}</div><div className="p-3"><p className="font-display text-sm font-bold text-ink">{g.title}</p><p className="mt-1 text-[10px] text-mist">{g.desc}</p><span className="mt-2 inline-flex rounded-full bg-glow-gradient px-2 py-1 text-[9px] font-bold text-ink">PREMIUM</span></div></Link>)}</section><BottomNav/></main>}
