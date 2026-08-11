@@ -17,9 +17,9 @@ module.exports = {
         panel2: "rgb(var(--color-panel2) / <alpha-value>)",
         ink: "rgb(var(--color-ink) / <alpha-value>)",
         neon: {
-          pink: "#FF3B7F",
-          violet: "#8B5CF6",
-          orange: "#FF8A3D",
+          pink: "#F5C34D",
+          violet: "#B8860B",
+          orange: "#FFF3C9",
         },
         gold: "#F5C34D",
         diamond: "#5ED4E8",
@@ -30,10 +30,10 @@ module.exports = {
         body: ["var(--font-body)"],
       },
       backgroundImage: {
-        "glow-gradient": "linear-gradient(135deg, #FF3B7F 0%, #8B5CF6 55%, #FF8A3D 100%)",
+        "glow-gradient": "linear-gradient(135deg, #B8860B 0%, #F5C34D 55%, #FFF3C9 100%)",
       },
       boxShadow: {
-        glow: "0 0 40px -10px rgba(139, 92, 246, 0.45)",
+        glow: "0 0 40px -10px rgba(245, 195, 77, 0.45)",
       },
     },
   },

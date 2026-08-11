@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   createUserWithEmailAndPassword,
   updateProfile,
@@ -14,9 +14,33 @@ import { doc, getDoc, setDoc, serverTimestamp } from "firebase/firestore";
 import { auth, db, googleProvider } from "@/lib/firebase";
 import { useAuth } from "@/lib/AuthContext";
 import { isInAppBrowser } from "@/lib/inAppBrowser";
+import PremiumCard from "@/components/PremiumCard";
 
+// useSearchParams() (used below to read ?ref=<code> from invite links)
+// opts this page into client-side rendering during prerender, and Next.js
+// requires it to sit below a <Suspense> boundary — see the identical note
+// in app/wallet/recharge/page.js.
 export default function SignupPage() {
+  return (
+    <Suspense
+      fallback={
+        <main className="flex min-h-screen items-center justify-center bg-void">
+          <p className="text-mist text-sm">Loading…</p>
+        </main>
+      }
+    >
+      <SignupContent />
+    </Suspense>
+  );
+}
+
+function SignupContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  // Real invite links look like /signup?ref=ABC1234 (see app/invite/page.js
+  // + lib/referral.js). Stored on the new user's doc so the
+  // awardReferralBonus Cloud Function can credit whoever shared it.
+  const refCode = searchParams.get("ref") || null;
   const { user } = useAuth();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -46,7 +70,7 @@ export default function SignupPage() {
       try {
         const result = await getRedirectResult(auth);
         if (!result || cancelled) return;
-        await ensureUserDoc(result.user);
+        await ensureUserDoc(result.user, refCode);
         router.replace("/");
       } catch (err) {
         console.error("Google redirect sign-in failed:", err);
@@ -76,7 +100,7 @@ export default function SignupPage() {
       // browsers that partition third-party storage — no error, no
       // account, just landing back on this page.
       const result = await signInWithPopup(auth, googleProvider);
-      await ensureUserDoc(result.user);
+      await ensureUserDoc(result.user, refCode);
       router.replace("/");
     } catch (err) {
       if (
@@ -127,6 +151,7 @@ export default function SignupPage() {
         vipLevel: 0,
         totalRechargedRs: 0,
         familyId: null,
+        referredByCode: refCode,
         createdAt: serverTimestamp(),
       });
 
@@ -148,71 +173,73 @@ export default function SignupPage() {
           Join the room. Streaming, gifts, and rank await.
         </p>
 
-        <button
-          onClick={handleGoogle}
-          disabled={googleBusy}
-          className="mt-6 flex w-full items-center justify-center gap-2 rounded-full bg-white py-3 text-sm font-semibold text-void disabled:opacity-60"
-        >
-          <GoogleIcon />
-          {googleBusy ? "Signing in…" : "Continue with Google"}
-        </button>
-        {inAppWarning && (
-          <p className="mt-2 text-center text-[11px] text-gold">
-            ⚠️ You're in an in-app browser — Google sign-in may not work here. Open this link in Chrome/Safari for best results.
-          </p>
-        )}
-
-        <div className="mt-5 flex items-center gap-3">
-          <div className="h-px flex-1 bg-white/10" />
-          <span className="text-xs text-mist">or</span>
-          <div className="h-px flex-1 bg-white/10" />
-        </div>
-
-        <form onSubmit={handleSignup} className="mt-5 space-y-4">
-          <div>
-            <label className="text-xs text-mist">Display name</label>
-            <input
-              type="text"
-              required
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              className="mt-1 w-full rounded-lg bg-panel px-4 py-3 text-sm text-ink outline-none ring-1 ring-white/10 focus:ring-neon-violet"
-              placeholder="Your name"
-            />
-          </div>
-          <div>
-            <label className="text-xs text-mist">Email</label>
-            <input
-              type="email"
-              required
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="mt-1 w-full rounded-lg bg-panel px-4 py-3 text-sm text-ink outline-none ring-1 ring-white/10 focus:ring-neon-violet"
-              placeholder="you@example.com"
-            />
-          </div>
-          <div>
-            <label className="text-xs text-mist">Password</label>
-            <input
-              type="password"
-              required
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="mt-1 w-full rounded-lg bg-panel px-4 py-3 text-sm text-ink outline-none ring-1 ring-white/10 focus:ring-neon-violet"
-              placeholder="At least 6 characters"
-            />
-          </div>
-
-          {error && <p className="text-xs text-neon-pink">{error}</p>}
-
+        <PremiumCard glow className="mt-6 p-5">
           <button
-            type="submit"
-            disabled={busy}
-            className="w-full rounded-full bg-glow-gradient py-3 text-sm font-semibold text-ink shadow-glow disabled:opacity-60"
+            onClick={handleGoogle}
+            disabled={googleBusy}
+            className="flex w-full items-center justify-center gap-2 rounded-full bg-white py-3 text-sm font-semibold text-void disabled:opacity-60"
           >
-            {busy ? "Creating…" : "Create Account"}
+            <GoogleIcon />
+            {googleBusy ? "Signing in…" : "Continue with Google"}
           </button>
-        </form>
+          {inAppWarning && (
+            <p className="mt-2 text-center text-[11px] text-gold">
+              ⚠️ You're in an in-app browser — Google sign-in may not work here. Open this link in Chrome/Safari for best results.
+            </p>
+          )}
+
+          <div className="mt-5 flex items-center gap-3">
+            <div className="h-px flex-1 bg-white/10" />
+            <span className="text-xs text-mist">or</span>
+            <div className="h-px flex-1 bg-white/10" />
+          </div>
+
+          <form onSubmit={handleSignup} className="mt-5 space-y-4">
+            <div>
+              <label className="text-xs text-mist">Display name</label>
+              <input
+                type="text"
+                required
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                className="mt-1 w-full rounded-xl bg-panel2 px-4 py-3 text-sm text-ink outline-none ring-1 ring-white/10 focus:ring-neon-violet"
+                placeholder="Your name"
+              />
+            </div>
+            <div>
+              <label className="text-xs text-mist">Email</label>
+              <input
+                type="email"
+                required
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="mt-1 w-full rounded-xl bg-panel2 px-4 py-3 text-sm text-ink outline-none ring-1 ring-white/10 focus:ring-neon-violet"
+                placeholder="you@example.com"
+              />
+            </div>
+            <div>
+              <label className="text-xs text-mist">Password</label>
+              <input
+                type="password"
+                required
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="mt-1 w-full rounded-xl bg-panel2 px-4 py-3 text-sm text-ink outline-none ring-1 ring-white/10 focus:ring-neon-violet"
+                placeholder="At least 6 characters"
+              />
+            </div>
+
+            {error && <p className="text-xs text-neon-pink">{error}</p>}
+
+            <button
+              type="submit"
+              disabled={busy}
+              className="premium-btn w-full !rounded-full disabled:opacity-60"
+            >
+              {busy ? "Creating…" : "Create Account"}
+            </button>
+          </form>
+        </PremiumCard>
 
         <p className="mt-6 text-center text-sm text-mist">
           Already have an account?{" "}
@@ -236,7 +263,7 @@ function GoogleIcon() {
   );
 }
 
-async function ensureUserDoc(firebaseUser) {
+async function ensureUserDoc(firebaseUser, refCode = null) {
   const userRef = doc(db, "users", firebaseUser.uid);
   const snap = await getDoc(userRef);
   if (!snap.exists()) {
@@ -250,6 +277,7 @@ async function ensureUserDoc(firebaseUser) {
       vipLevel: 0,
       totalRechargedRs: 0,
       familyId: null,
+      referredByCode: refCode,
       createdAt: serverTimestamp(),
     });
   }

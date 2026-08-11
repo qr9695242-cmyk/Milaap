@@ -61,7 +61,7 @@ export default function AnalyticsPage() {
 
       <div className="mt-6 grid grid-cols-2 gap-3">
         {cards.map((c) => (
-          <div key={c.label} className="rounded-xl bg-panel p-4 ring-1 ring-white/5">
+          <div key={c.label} className="premium-card p-4">
             <p className="font-display text-xl font-extrabold text-ink">{c.value}</p>
             <p className="mt-1 text-[11px] text-mist">{c.label}</p>
           </div>

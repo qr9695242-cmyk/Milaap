@@ -6,6 +6,7 @@ import Link from "next/link";
 import { useAuth } from "@/lib/AuthContext";
 import { listenFamilyLeaderboard, createFamily, joinFamily } from "@/lib/family";
 import BottomNav from "@/components/BottomNav";
+import PremiumCard from "@/components/PremiumCard";
 
 export default function FamilyBrowsePage() {
   const { user, profile, loading } = useAuth();
@@ -66,7 +67,7 @@ export default function FamilyBrowsePage() {
         </div>
         <button
           onClick={() => setShowCreate(true)}
-          className="rounded-full bg-glow-gradient px-4 py-2 text-xs font-semibold text-ink shadow-glow"
+          className="premium-btn !rounded-full !px-4 !py-2 !text-xs"
         >
           + Create
         </button>
@@ -77,10 +78,7 @@ export default function FamilyBrowsePage() {
           <p className="text-xs text-mist">No families yet — start the first one.</p>
         ) : (
           families.map((f, i) => (
-            <div
-              key={f.id}
-              className="flex items-center justify-between rounded-xl bg-panel p-3 ring-1 ring-white/5"
-            >
+            <PremiumCard key={f.id} className="flex items-center justify-between p-3">
               <div className="flex items-center gap-3">
                 <span className="w-5 text-center text-xs text-mist">#{i + 1}</span>
                 <div>
@@ -92,11 +90,11 @@ export default function FamilyBrowsePage() {
               </div>
               <button
                 onClick={() => handleJoin(f)}
-                className="rounded-full bg-panel2 px-3 py-1.5 text-xs font-semibold text-ink ring-1 ring-white/10"
+                className="premium-chip font-semibold text-ink"
               >
                 Join
               </button>
-            </div>
+            </PremiumCard>
           ))
         )}
       </section>
@@ -109,12 +107,12 @@ export default function FamilyBrowsePage() {
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="Family name"
-              className="mt-4 w-full rounded-lg bg-panel2 px-4 py-3 text-sm text-ink outline-none ring-1 ring-white/10 focus:ring-neon-violet"
+              className="mt-4 w-full rounded-xl bg-panel2 px-4 py-3 text-sm text-ink outline-none ring-1 ring-white/10 focus:ring-neon-violet"
             />
             <button
               onClick={handleCreate}
               disabled={busy}
-              className="mt-4 w-full rounded-full bg-glow-gradient py-3 text-sm font-semibold text-ink disabled:opacity-60"
+              className="premium-btn mt-4 w-full disabled:opacity-60"
             >
               {busy ? "Creating…" : "Create Family"}
             </button>

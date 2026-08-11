@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useAuth } from "@/lib/AuthContext";
 import { listenUnreadCount } from "@/lib/notifications";
+import { listenForegroundPush } from "@/lib/push";
 
 export default function NotificationBell() {
   const { user } = useAuth();
@@ -12,6 +13,20 @@ export default function NotificationBell() {
   useEffect(() => {
     if (!user) return;
     return listenUnreadCount(user.uid, setUnread);
+  }, [user]);
+
+  // Foreground push: Firebase only auto-shows a system notification when
+  // the tab is backgrounded/closed (handled by the service worker). While
+  // the app is open, show it ourselves so it doesn't get silently missed.
+  useEffect(() => {
+    if (!user) return;
+    return listenForegroundPush((payload) => {
+      const title = payload?.notification?.title || "Milaap";
+      const body = payload?.notification?.body || "";
+      if (typeof window !== "undefined" && "Notification" in window && Notification.permission === "granted") {
+        new Notification(title, { body, icon: "/icon-192.png" });
+      }
+    });
   }, [user]);
 
   return (

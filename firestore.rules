@@ -1,3 +1,4 @@
+// Ludo entry is paid in Coins. Match winnings are credited as Diamonds at 2.5 Coins = 1 Diamond.
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
@@ -27,8 +28,42 @@ service cloud.firestore {
     // Users can read any profile, but only edit their own (or an admin, for recharge approval).
     // Exception: followersCount/followingCount are counters that the OTHER
     // side of a follow/unfollow needs to bump on your doc (see lib/follow.js).
-    // Same MVP caveat as coins/diamonds elsewhere in this file — a fully
-    // locked-down version would move counter writes into a Cloud Function.
+    // `diamonds` is the same kind of exception — whoever SENDS you a gift
+    // needs to credit your diamonds in the same transaction that deducts
+    // their own coins (see lib/gifts.js sendGift). Same MVP caveat as
+    // elsewhere in this file — a fully locked-down version would move
+    // counter writes into a Cloud Function.
+    match /decorationMedia/{docId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // Referral / "Invite Friends" program config — public read so /invite
+    // can show the current reward + whether the offer is live, admin-only
+    // write (see lib/referral.js setReferralConfig, used from /admin).
+    match /config/{docId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // One doc per referral code, used only to reserve codes so two users
+    // can never collide (lib/referral.js ensureReferralCode). A user may
+    // only ever reserve a code for themselves, and codes are permanent.
+    match /referralCodes/{code} {
+      allow read: if true;
+      allow create: if request.auth != null && request.resource.data.uid == request.auth.uid;
+      allow update, delete: if false;
+    }
+
+    // Audit trail of paid-out referral bonuses — written only by the
+    // awardReferralBonus Cloud Function (Admin SDK bypasses these rules),
+    // never directly by clients.
+    match /referrals/{newUserId} {
+      allow read: if request.auth != null &&
+        (request.auth.uid == newUserId || isAdmin());
+      allow write: if false;
+    }
+
     match /users/{userId} {
       allow read: if request.auth != null;
       allow create: if request.auth != null && request.auth.uid == userId;
@@ -40,13 +75,22 @@ service cloud.firestore {
             request.auth.uid == userId ||
             isAdmin() ||
             request.resource.data.diff(resource.data).affectedKeys().hasOnly(["followersCount"]) ||
-            request.resource.data.diff(resource.data).affectedKeys().hasOnly(["followingCount"])
+            request.resource.data.diff(resource.data).affectedKeys().hasOnly(["followingCount"]) ||
+            request.resource.data.diff(resource.data).affectedKeys().hasOnly(["diamonds"])
           )
         )
       );
       allow delete: if false;
     }
 
+    // Profile visitors — owner-only read (who visited me); any signed-in
+    // user may write only their OWN entry under someone else's list (i.e.
+    // "I visited them"), never anyone else's. Powers the SVIP "Hide
+    // visitor records" toggle + "View visitor records" privilege.
+    match /users/{userId}/visitors/{visitorUid} {
+      allow read: if request.auth != null && request.auth.uid == userId;
+      allow write: if request.auth != null && request.auth.uid == visitorUid;
+    }
     // Agencies — a leader manages an agency; hosts join by entering its
     // code (which sets their own users/{uid}.agencyId, already allowed
     // above since users can edit their own doc).
@@ -62,6 +106,13 @@ service cloud.firestore {
 
     // Daily check-in / Lucky Box / Spin Wheel state — owner-only.
     match /rewardStatus/{uid} {
+      allow read, write: if request.auth != null && request.auth.uid == uid;
+    }
+
+    // Daily Reward 7-day sign-in popup state (lib/dailyReward.js) — same
+    // owner-only shape as rewardStatus above, just a separate doc so the
+    // two streaks (Check-in tab vs. this auto-popup) never collide.
+    match /dailyRewardStatus/{uid} {
       allow read, write: if request.auth != null && request.auth.uid == uid;
     }
 
@@ -169,17 +220,7 @@ service cloud.firestore {
       allow update: if request.auth != null && (
         resource.data.hostUid == request.auth.uid ||
         isAdmin() ||
-        request.resource.data.diff(resource.data).affectedKeys().hasOnly(["seats"]) ||
-        // Co-host invite accept/decline, or the current co-host leaving —
-        // only the person becoming/leaving co-host may touch these keys.
-        (
-          request.resource.data.diff(resource.data).affectedKeys().hasOnly(["coHostUid", "coHostName", "coHostInvite"]) &&
-          (
-            !("coHostUid" in request.resource.data) ||
-            request.resource.data.coHostUid == request.auth.uid ||
-            resource.data.coHostUid == request.auth.uid
-          )
-        )
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(["seats"])
       );
       allow delete: if request.auth != null && resource.data.hostUid == request.auth.uid;
 
@@ -205,7 +246,7 @@ service cloud.firestore {
       }
 
       // Who's currently in the room (self-managed heartbeat) — lets the
-      // host see people to invite as a video co-host (lib/coHost.js).
+      // host see people to bring onto a seat (lib/coHost.js).
       match /participants/{uid} {
         allow read: if request.auth != null;
         allow write: if request.auth != null && request.auth.uid == uid;
@@ -217,21 +258,12 @@ service cloud.firestore {
     match /rechargeRequests/{reqId} {
       allow create: if request.auth != null
         && request.resource.data.uid == request.auth.uid
-        && request.resource.data.status == "pending";
+        && request.resource.data.status == "pending"
+        && request.resource.data.reference is string
+        && request.resource.data.reference.size() > 0;
       allow read: if request.auth != null && (resource.data.uid == request.auth.uid || isAdmin());
-      allow update: if isAdmin();
-      allow delete: if false;
-    }
-
-    // Diamond withdraw (cashout) requests — host submits (diamonds already
-    // deducted client-side in the same transaction, see lib/wallet.js);
-    // only an admin can approve (mark paid) or reject (refunds diamonds).
-    match /withdrawRequests/{reqId} {
-      allow create: if request.auth != null
-        && request.resource.data.uid == request.auth.uid
-        && request.resource.data.status == "pending";
-      allow read: if request.auth != null && (resource.data.uid == request.auth.uid || isAdmin());
-      allow update: if isAdmin();
+      allow update: if isAdmin()
+        && (request.resource.data.status != "approved" || (resource.data.reference is string && resource.data.reference.size() > 0));
       allow delete: if false;
     }
 
@@ -246,5 +278,36 @@ service cloud.firestore {
       );
       allow delete: if request.auth != null && resource.data.leaderId == request.auth.uid;
     }
+
+    // Ludo matches: real-time 2- or 4-player matches. Entry is in Coins; winner payout is Diamonds.
+    // Ludo matches are server-authoritative. Clients can only read live state.
+    // Create/join/roll/move/settlement/refunds are performed by trusted Cloud Functions.
+    match /ludoMatches/{matchId} {
+      allow read: if request.auth != null && (resource.data.status == "waiting" || request.auth.uid in resource.data.playerUids);
+      allow create, update, delete: if false;
+    }
+
+    match /ludoMatchHistory/{historyId} {
+      allow read: if request.auth != null && request.auth.uid in resource.data.playerUids;
+      allow create: if request.auth != null && request.auth.uid in request.resource.data.playerUids;
+      allow update, delete: if false;
+    }
+
+    // Snake & Ladder matches — same server-authoritative model as Ludo.
+    match /snakeLadderMatches/{matchId} {
+      allow read: if request.auth != null && (resource.data.status == "waiting" || request.auth.uid in resource.data.playerUids);
+      allow create, update, delete: if false;
+    }
+
+    // Casual (free, no coin stake) games — Chess, Quiz Battle, etc. No
+    // money on the line, so unlike Ludo/Snake&Ladder these are trusted
+    // to write their own match state directly (lib/casualMatches.js).
+    match /casualMatches/{matchId} {
+      allow read: if request.auth != null && (resource.data.status == "waiting" || request.auth.uid in resource.data.playerUids);
+      allow create: if request.auth != null && request.resource.data.hostUid == request.auth.uid && request.resource.data.status == "waiting";
+      allow update: if request.auth != null && request.auth.uid in resource.data.playerUids;
+      allow delete: if request.auth != null && resource.data.hostUid == request.auth.uid;
+    }
+
   }
 }

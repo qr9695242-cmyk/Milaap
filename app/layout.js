@@ -1,14 +1,16 @@
-import { Manrope, Inter } from "next/font/google";
+import { Playfair_Display, Inter } from "next/font/google";
+import { Suspense } from "react";
 import "./globals.css";
 import { AuthProvider } from "@/lib/AuthContext";
 import { ThemeProvider } from "@/lib/ThemeContext";
-import { InstallProvider } from "@/lib/InstallContext";
 import InstallPrompt from "@/components/InstallPrompt";
+import UpdateAvailableBanner from "@/components/UpdateAvailableBanner";
+import AnalyticsPageviews from "@/components/AnalyticsPageviews";
 
-const display = Manrope({
+const display = Playfair_Display({
   subsets: ["latin"],
   variable: "--font-display",
-  weight: ["700", "800"],
+  weight: ["700", "800", "900"],
 });
 
 const body = Inter({
@@ -40,7 +42,7 @@ export const viewport = {
   initialScale: 1,
   maximumScale: 1,
   viewportFit: "cover",
-  themeColor: "#0B0714",
+  themeColor: "#0A0806",
 };
 
 export default function RootLayout({ children }) {
@@ -49,10 +51,12 @@ export default function RootLayout({ children }) {
       <body className="font-body bg-void min-h-screen">
         <ThemeProvider>
           <AuthProvider>
-            <InstallProvider>
-              {children}
-              <InstallPrompt />
-            </InstallProvider>
+            {children}
+            <InstallPrompt />
+            <UpdateAvailableBanner />
+            <Suspense fallback={null}>
+              <AnalyticsPageviews />
+            </Suspense>
           </AuthProvider>
         </ThemeProvider>
       </body>

@@ -10,14 +10,16 @@ import { vipLevelForSpend } from "@/lib/vip";
 import { blockUser, unblockUser, listenIsBlocked } from "@/lib/block";
 import { sendFriendRequest } from "@/lib/friends";
 import { sendCpRequest } from "@/lib/cp";
+import { recordVisit } from "@/lib/visitors";
 import OnlineDot from "@/components/OnlineDot";
 import FollowButton from "@/components/FollowButton";
 import ReportModal from "@/components/ReportModal";
 import BottomNav from "@/components/BottomNav";
+import { ensureConversation } from "@/lib/dm";
 
 export default function PublicProfilePage() {
   const { uid } = useParams();
-  const { user, loading } = useAuth();
+  const { user, profile, loading } = useAuth();
   const router = useRouter();
   const [target, setTarget] = useState(null);
   const [isBlocked, setIsBlocked] = useState(false);
@@ -45,6 +47,20 @@ export default function PublicProfilePage() {
     if (!user) return;
     return listenIsBlocked(user.uid, uid, setIsBlocked);
   }, [user, uid]);
+
+  // Leave a "visited" trace on the profile owner's list — unless *I* have
+  // SVIP's "Hide visitor records" turned on (lib/visitors.js handles the
+  // self-visit + toggle checks).
+  useEffect(() => {
+    if (!user || uid === user.uid) return;
+    recordVisit(uid, {
+      uid: user.uid,
+      name: profile?.displayName || user.displayName || "User",
+      avatar: profile?.avatar || user.photoURL || "",
+      vipLevel: profile?.vipLevel || 0,
+      hideVisitorRecords: !!profile?.hideVisitorRecords,
+    }).catch((err) => console.error("recordVisit failed:", err));
+  }, [user?.uid, uid, profile?.hideVisitorRecords]); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (loading || !user || !target) {
     return (
@@ -135,6 +151,7 @@ export default function PublicProfilePage() {
           </span>
         </div>
         <FollowButton target={{ uid, displayName: target.displayName, avatar: target.avatar }} />
+        <button onClick={async () => { const id = await ensureConversation(user.uid, uid); router.push(`/messages/${id}`); }} className="rounded-full bg-panel px-4 py-2 text-xs font-bold text-ink ring-1 ring-white/10">💬</button>
       </section>
 
       <section className="mx-5 mt-3 flex gap-2">
@@ -167,7 +184,7 @@ export default function PublicProfilePage() {
       </section>
 
       {isBlocked && (
-        <p className="mx-5 mt-4 rounded-xl bg-panel p-3 text-center text-xs text-mist ring-1 ring-white/5">
+        <p className="mx-5 mt-4 premium-card p-3 text-center text-xs text-mist">
           You've blocked this user. They've been removed from your followers.
         </p>
       )}

@@ -7,6 +7,7 @@ import { useAuth } from "@/lib/AuthContext";
 import { createAgency, joinAgencyByCode, leaveAgency, listenAgency, listenAgencyMembers } from "@/lib/agency";
 import BottomNav from "@/components/BottomNav";
 import HostLevelBadge from "@/components/HostLevelBadge";
+import PremiumCard from "@/components/PremiumCard";
 
 export default function AgencyPage() {
   const { user, profile, loading } = useAuth();
@@ -98,36 +99,40 @@ export default function AgencyPage() {
 
       {!profile?.agencyId ? (
         <div className="mx-5 mt-6 space-y-6">
-          <form onSubmit={handleCreate} className="rounded-xl bg-panel p-4 ring-1 ring-white/5">
-            <h2 className="font-display text-sm font-bold text-ink">Start an Agency</h2>
-            <input
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="Agency name"
-              className="mt-3 w-full rounded-lg bg-panel2 px-3 py-2 text-sm text-ink outline-none ring-1 ring-white/10"
-            />
-            <button
-              disabled={busy}
-              className="mt-3 w-full rounded-full bg-glow-gradient py-2.5 text-sm font-bold text-ink disabled:opacity-50"
-            >
-              Create Agency
-            </button>
+          <form onSubmit={handleCreate}>
+            <PremiumCard className="p-4">
+              <h2 className="font-display text-sm font-bold text-ink">Start an Agency</h2>
+              <input
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="Agency name"
+                className="mt-3 w-full rounded-xl bg-panel2 px-3 py-2 text-sm text-ink outline-none ring-1 ring-white/10"
+              />
+              <button
+                disabled={busy}
+                className="premium-btn mt-3 w-full disabled:opacity-50"
+              >
+                Create Agency
+              </button>
+            </PremiumCard>
           </form>
 
-          <form onSubmit={handleJoin} className="rounded-xl bg-panel p-4 ring-1 ring-white/5">
-            <h2 className="font-display text-sm font-bold text-ink">Join with a Code</h2>
-            <input
-              value={code}
-              onChange={(e) => setCode(e.target.value)}
-              placeholder="6-character code"
-              className="mt-3 w-full rounded-lg bg-panel2 px-3 py-2 text-sm uppercase text-ink outline-none ring-1 ring-white/10"
-            />
-            <button
-              disabled={busy}
-              className="mt-3 w-full rounded-full bg-panel2 py-2.5 text-sm font-bold text-ink ring-1 ring-white/10 disabled:opacity-50"
-            >
-              Join Agency
-            </button>
+          <form onSubmit={handleJoin}>
+            <PremiumCard className="p-4">
+              <h2 className="font-display text-sm font-bold text-ink">Join with a Code</h2>
+              <input
+                value={code}
+                onChange={(e) => setCode(e.target.value)}
+                placeholder="6-character code"
+                className="mt-3 w-full rounded-xl bg-panel2 px-3 py-2 text-sm uppercase text-ink outline-none ring-1 ring-white/10"
+              />
+              <button
+                disabled={busy}
+                className="mt-3 w-full rounded-full bg-panel2 py-2.5 text-sm font-bold text-ink ring-1 ring-white/10 disabled:opacity-50"
+              >
+                Join Agency
+              </button>
+            </PremiumCard>
           </form>
         </div>
       ) : (
@@ -145,26 +150,26 @@ export default function AgencyPage() {
           </div>
 
           <div className="mt-4 flex gap-2">
-            <div className="flex-1 rounded-xl bg-panel p-3 text-center ring-1 ring-white/5">
+            <PremiumCard className="flex-1 p-3 text-center">
               <p className="font-display text-base font-extrabold text-ink">{members.length}</p>
               <p className="text-[10px] text-mist">Hosts</p>
-            </div>
-            <div className="flex-1 rounded-xl bg-panel p-3 text-center ring-1 ring-white/5">
+            </PremiumCard>
+            <PremiumCard className="flex-1 p-3 text-center">
               <p className="font-display text-base font-extrabold text-gold">◆ {totalDiamonds}</p>
               <p className="text-[10px] text-mist">Total Diamonds</p>
-            </div>
+            </PremiumCard>
           </div>
 
           <h2 className="mt-6 font-display text-sm font-bold text-ink">Hosts</h2>
           <div className="mt-3 space-y-2">
             {members.map((m) => (
-              <div key={m.id} className="flex items-center justify-between rounded-xl bg-panel p-3 ring-1 ring-white/5">
+              <PremiumCard key={m.id} className="flex items-center justify-between p-3">
                 <div className="flex items-center gap-2">
                   <p className="text-sm font-semibold text-ink">{m.displayName}</p>
                   <HostLevelBadge diamonds={m.diamonds} compact />
                 </div>
                 <span className="text-xs font-bold text-gold">◆ {m.diamonds ?? 0}</span>
-              </div>
+              </PremiumCard>
             ))}
           </div>
 

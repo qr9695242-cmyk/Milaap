@@ -58,7 +58,7 @@ export default function SearchPage() {
           value={text}
           onChange={(e) => setText(e.target.value)}
           placeholder="Search by name…"
-          className="w-full rounded-full bg-panel px-4 py-2.5 text-sm text-ink ring-1 ring-white/10 placeholder:text-mist"
+          className="w-full rounded-full border border-white/9 bg-panel2 px-4 py-2.5 text-sm text-ink ring-1 ring-white/10 placeholder:text-mist focus:outline-none focus:ring-neon-violet"
         />
       </div>
 

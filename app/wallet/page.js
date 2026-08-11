@@ -7,6 +7,8 @@ import { useAuth } from "@/lib/AuthContext";
 import { listenMyRecharges, exchangeDiamondsToCoins, diamondsToCoins } from "@/lib/wallet";
 import { MIN_EXCHANGE_DIAMONDS } from "@/lib/config";
 import BottomNav from "@/components/BottomNav";
+import PremiumCard from "@/components/PremiumCard";
+import RechargeBenefitModal from "@/components/RechargeBenefitModal";
 
 const STATUS_STYLES = {
   pending: "bg-gold/20 text-gold",
@@ -22,6 +24,7 @@ export default function WalletPage() {
   const [exchangeBusy, setExchangeBusy] = useState(false);
   const [exchangeError, setExchangeError] = useState("");
   const [exchangeSuccess, setExchangeSuccess] = useState("");
+  const [showBenefitModal, setShowBenefitModal] = useState(false);
 
   useEffect(() => {
     if (!loading && !user) router.replace("/login");
@@ -32,6 +35,17 @@ export default function WalletPage() {
     const unsub = listenMyRecharges(user.uid, setRecharges);
     return () => unsub();
   }, [user]);
+
+  // Wallet screen khulte hi "Recharge Benefit" welcome popup dikhao — sirf
+  // un users ke liye jinhone abhi tak claim nahi kiya aur jinka 24hr
+  // countdown khatam nahi hua. Har baar Wallet open hone par dobara dikhta
+  // hai jab tak claim ya expire na ho jaye.
+  useEffect(() => {
+    if (!profile) return;
+    if (profile.firstOfferClaimed) return;
+    if (!profile.firstOfferExpiresAt) return;
+    setShowBenefitModal(true);
+  }, [profile]);
 
   async function handleExchange() {
     setExchangeError("");
@@ -67,6 +81,13 @@ export default function WalletPage() {
 
   return (
     <main className="min-h-screen bg-void pb-28">
+      {showBenefitModal && (
+        <RechargeBenefitModal
+          expiresAt={profile?.firstOfferExpiresAt}
+          onClose={() => setShowBenefitModal(false)}
+        />
+      )}
+
       <header className="px-5 pt-6">
         <h1 className="font-display text-xl font-extrabold text-ink">Wallet</h1>
       </header>
@@ -85,7 +106,7 @@ export default function WalletPage() {
             <p className="mt-1 font-display text-2xl font-extrabold text-ink">
               ◆ {profile?.diamonds ?? 0}
             </p>
-            <p className="text-[10px] text-ink/70">Earned from gifts received</p>
+            <p className="text-[10px] text-ink/70">In-app rewards only • no cash-out</p>
           </div>
         </div>
         <div className="mt-4 grid grid-cols-2 gap-2">
@@ -96,15 +117,15 @@ export default function WalletPage() {
             Recharge Coins
           </Link>
           <Link
-            href="/wallet/withdraw"
+            href="/games"
             className="rounded-full bg-void/30 py-2.5 text-center text-sm font-semibold text-ink ring-1 ring-white/30"
           >
-            Withdraw Diamonds
+            Premium Games
           </Link>
         </div>
       </section>
 
-      <section className="mx-5 mt-4 rounded-2xl bg-panel p-5 ring-1 ring-white/5">
+      <PremiumCard className="mx-5 mt-4 p-5">
         <h2 className="font-display text-sm font-bold text-ink">
           ◆ Diamonds → ● Coins
         </h2>
@@ -124,7 +145,7 @@ export default function WalletPage() {
           <button
             onClick={handleExchange}
             disabled={exchangeBusy}
-            className="shrink-0 rounded-xl bg-glow-gradient px-4 py-2.5 text-sm font-semibold text-ink disabled:opacity-50"
+            className="premium-btn shrink-0 !px-4 !py-2.5 disabled:opacity-50"
           >
             {exchangeBusy ? "…" : "Exchange"}
           </button>
@@ -136,7 +157,7 @@ export default function WalletPage() {
         )}
         {exchangeError && <p className="mt-2 text-[11px] text-neon-pink">{exchangeError}</p>}
         {exchangeSuccess && <p className="mt-2 text-[11px] text-emerald-400">{exchangeSuccess}</p>}
-      </section>
+      </PremiumCard>
 
       <section className="mx-5 mt-6">
         <h2 className="font-display text-sm font-bold text-ink">
@@ -147,10 +168,7 @@ export default function WalletPage() {
         ) : (
           <div className="mt-3 space-y-2">
             {recharges.map((r) => (
-              <div
-                key={r.id}
-                className="flex items-center justify-between rounded-xl bg-panel p-3 ring-1 ring-white/5"
-              >
+              <PremiumCard key={r.id} className="flex items-center justify-between p-3">
                 <div>
                   <p className="text-sm font-semibold text-ink">
                     {r.coins} coins
@@ -166,7 +184,7 @@ export default function WalletPage() {
                 >
                   {r.status}
                 </span>
-              </div>
+              </PremiumCard>
             ))}
           </div>
         )}
