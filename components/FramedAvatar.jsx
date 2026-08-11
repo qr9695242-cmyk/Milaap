@@ -30,7 +30,7 @@ export default function FramedAvatar({ frameId, name, photoURL, size = 56, ring 
         <video
           src={frame.video}
           className="pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 select-none"
-          style={{ width: size * 1.82, height: size * 1.82 }}
+          style={{ width: size * 1.82, height: size * 1.82, objectFit: "contain" }}
           autoPlay
           loop
           muted
@@ -42,8 +42,12 @@ export default function FramedAvatar({ frameId, name, photoURL, size = 56, ring 
           <img
             src={frame.image}
             alt=""
+            // Frame PNGs aren't all square (e.g. 256x157) — forcing equal
+            // width/height with no object-fit stretched them, distorting
+            // the art. object-fit: contain keeps each frame's real aspect
+            // ratio and centers it in the same bounding box.
             className="pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 select-none"
-            style={{ width: size * 1.82, height: size * 1.82 }}
+            style={{ width: size * 1.82, height: size * 1.82, objectFit: "contain" }}
             draggable={false}
           />
         )
