@@ -23,6 +23,9 @@ export default function ArcheryPage() {
   const [locked, setLocked] = useState(false);
   const [aim, setAim] = useState(null); // {x,y} within the SVG board
   const [lastShot, setLastShot] = useState(null);
+  const [soloRound, setSoloRound] = useState(0);
+  const [soloScore, setSoloScore] = useState(0);
+  const [soloBotScore, setSoloBotScore] = useState(0);
   const svgRef = useRef(null);
 
   useEffect(() => {
@@ -43,6 +46,10 @@ export default function ArcheryPage() {
   }, [matchId, match?.status, stake, user?.uid]);
 
   if (loading || !user) return <main className="game-screen game-screen min-h-screen bg-void flex items-center justify-center text-mist">Loading…</main>;
+
+  function startSolo() {
+    setSoloRound(0); setSoloScore(0); setSoloBotScore(0); setAim(null); setLastShot(null); setLocked(false); setError(""); setPhase("solo");
+  }
 
   async function startMatch() {
     setError(""); setBusy(true);
@@ -76,7 +83,24 @@ export default function ArcheryPage() {
   }
 
   async function shoot() {
-    if (!aim || locked || !match) return;
+    if (!aim || locked) return;
+    if (phase === "solo") {
+      setLocked(true);
+      const shakeAngle = Math.random() * Math.PI * 2;
+      const shakeMag = Math.random() * 12;
+      const landX = aim.x + Math.cos(shakeAngle) * shakeMag;
+      const landY = aim.y + Math.sin(shakeAngle) * shakeMag;
+      const result = archeryScore(landX, landY, CENTER, RADIUS);
+      setLastShot({ x: landX, y: landY, ...result });
+      const bot = Math.floor(45 + Math.random() * 56);
+      const nextRound = soloRound + 1;
+      setTimeout(() => {
+        setSoloScore((v) => v + result.points); setSoloBotScore((v) => v + bot); setSoloRound(nextRound); setLocked(false);
+        if (nextRound >= ROUNDS) setPhase("soloFinished"); else { setAim(null); setLastShot(null); }
+      }, 650);
+      return;
+    }
+    if (!match) return;
     setLocked(true);
     // Real hand-tremor: a small random deviation applied to the chosen aim point.
     const shakeAngle = Math.random() * Math.PI * 2;
@@ -115,7 +139,7 @@ export default function ArcheryPage() {
           <button onClick={() => setStake(stake === 0 ? 100 : stake)} className={`rounded-xl py-3 text-sm font-bold ${stake > 0 ? "bg-gradient-to-r from-yellow-300 to-orange-400 text-black" : "bg-white/10"}`}>🪙 Coin Match</button>
         </div>
         {stake > 0 && <div className="mt-4 grid grid-cols-4 gap-2">{STAKES.slice(1).map((v) => <button key={v} onClick={() => setStake(v)} className={`rounded-xl py-2 text-xs font-bold ${stake === v ? "bg-yellow-300 text-black" : "bg-white/10"}`}>🪙 {v}</button>)}</div>}
-        <button disabled={busy} onClick={startMatch} className="mt-5 w-full rounded-full bg-gradient-to-r from-teal-400 to-yellow-300 py-4 font-bold text-black disabled:opacity-60">{busy ? "Finding…" : "⚡ Quick Match"}</button>
+        <div className="grid grid-cols-2 gap-2 mt-5"><button onClick={startSolo} className="rounded-full bg-gradient-to-r from-teal-400 to-yellow-300 py-4 font-bold text-black">🤖 Solo Practice</button><button disabled={busy} onClick={startMatch} className="mt-5 w-full rounded-full bg-gradient-to-r from-teal-400 to-yellow-300 py-4 font-bold text-black disabled:opacity-60">{busy ? "Finding…" : "⚡ Quick Match"}</button></div>
         {error && <p className="mt-3 rounded-xl bg-red-500/10 p-3 text-sm text-red-300">{error}</p>}
       </section>
     </main>
@@ -132,12 +156,12 @@ export default function ArcheryPage() {
     </main>
   );
 
-  if (phase === "playing") {
-    const opponent = match.players?.find((p) => p.uid !== user.uid);
-    const mine = match.scores?.[user.uid] || 0, theirs = match.scores?.[opponent?.uid] || 0;
+  if (phase === "playing" || phase === "solo") {
+    const opponent = match?.players?.find((p) => p.uid !== user.uid);
+    const mine = phase === "solo" ? soloScore : (match?.scores?.[user.uid] || 0), theirs = phase === "solo" ? soloBotScore : (match?.scores?.[opponent?.uid] || 0);
     return (
       <main className="game-screen min-h-screen bg-void text-ink pb-10">
-        <header className="flex items-center justify-between px-4 pt-6 pb-3"><Link href="/games" className="text-2xl text-mist">‹</Link><p className="text-sm font-semibold">Round {(match.round || 0) + 1}/{ROUNDS}</p><span className="text-xs text-mist">You {mine} — {theirs} {opponent?.name || "…"}</span></header>
+        <header className="flex items-center justify-between px-4 pt-6 pb-3"><Link href="/games" className="text-2xl text-mist">‹</Link><p className="text-sm font-semibold">Round {(phase === "solo" ? soloRound : (match?.round || 0)) + 1}/{ROUNDS}</p><span className="text-xs text-mist">You {mine} — {theirs} {phase === "solo" ? "Computer" : (opponent?.name || "…")}</span></header>
         <section className="mx-4 rounded-3xl bg-panel p-5 ring-1 ring-white/10">
           <p className="text-center text-xs text-mist">Target par tap karke aim set karein, phir Shoot dabayein.</p>
           <svg ref={svgRef} viewBox="0 0 300 300" onPointerDown={pickAim} className="mt-4 w-full touch-none rounded-2xl bg-panel2">
@@ -146,16 +170,20 @@ export default function ArcheryPage() {
             {lastShot && <circle cx={lastShot.x} cy={lastShot.y} r={6} fill="#22D3EE" stroke="#fff" strokeWidth={1.5} />}
           </svg>
           {lastShot && <p className="mt-3 text-center text-sm font-bold text-yellow-200">Ring {lastShot.ring} • {lastShot.points} points</p>}
-          <button disabled={!aim || locked} onClick={shoot} className="mt-5 w-full rounded-full bg-gradient-to-r from-teal-400 to-yellow-300 py-4 font-bold text-black disabled:opacity-40">{locked ? "Waiting for opponent…" : "🏹 Shoot"}</button>
+          <button disabled={!aim || locked} onClick={shoot} className="mt-5 w-full rounded-full bg-gradient-to-r from-teal-400 to-yellow-300 py-4 font-bold text-black disabled:opacity-40">{locked ? (phase === "solo" ? "Computer turn…" : "Waiting for opponent…") : "🏹 Shoot"}</button>
         </section>
         {error && <p className="mx-4 mt-3 text-sm text-red-300">{error}</p>}
       </main>
     );
   }
 
+  if (phase === "soloFinished") return (
+    <main className="game-screen min-h-screen bg-void text-ink flex items-center justify-center px-5"><div className="w-full max-w-sm rounded-3xl bg-panel p-7 text-center ring-1 ring-white/10"><div className="text-6xl">{soloScore >= soloBotScore ? "🏆" : "😔"}</div><h1 className="mt-4 text-2xl font-bold">{soloScore >= soloBotScore ? "You Won!" : "Computer Won"}</h1><p className="mt-2 text-sm text-mist">Solo Archery • You {soloScore} — {soloBotScore} Computer</p><button onClick={startSolo} className="mt-6 w-full rounded-full bg-gradient-to-r from-teal-400 to-yellow-300 py-3 font-bold text-black">Play Again</button></div></main>
+  );
+
   if (phase === "finished") {
-    const opponent = match.players?.find((p) => p.uid !== user.uid);
-    const mine = match.scores?.[user.uid] || 0, theirs = match.scores?.[opponent?.uid] || 0;
+    const opponent = match?.players?.find((p) => p.uid !== user.uid);
+    const mine = phase === "solo" ? soloScore : (match?.scores?.[user.uid] || 0), theirs = phase === "solo" ? soloBotScore : (match?.scores?.[opponent?.uid] || 0);
     const won = match.winner === user.uid, draw = !match.winner;
     return <main className="game-screen min-h-screen bg-void text-ink flex items-center justify-center px-5"><div className="w-full max-w-sm rounded-3xl bg-panel p-7 text-center ring-1 ring-white/10"><div className="text-6xl">{draw ? "🤝" : won ? "🏆" : "😔"}</div><h1 className="mt-4 text-2xl font-bold">{draw ? "Draw" : won ? "You Won!" : "You Lost"}</h1><p className="mt-2 text-sm text-mist">Archery • You {mine} — {theirs} {opponent?.name || ""}</p>{stake > 0 && <p className="mt-2 text-xs text-yellow-200">🪙 Coin Match: {stake} entry</p>}<button onClick={() => { setMatchId(null); setMatch(null); setPhase("setup"); }} className="mt-6 w-full rounded-full bg-gradient-to-r from-teal-400 to-yellow-300 py-3 font-bold text-black">Play Again</button></div></main>;
   }

@@ -112,6 +112,7 @@ export default function LiveRoomPage() {
     announceEntrance(roomId, {
       uid: user.uid,
       name: profile?.displayName || "User",
+      avatar: profile?.photoURL || profile?.avatar || user.photoURL || null,
       vehicleId: vehicle?.id,
       vehicleName: vehicle?.name,
       vehicleImage: vehicle?.image,

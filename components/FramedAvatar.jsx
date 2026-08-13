@@ -1,6 +1,7 @@
 "use client";
 
-import { findItem } from "@/lib/decorations";
+import { useEffect, useState } from "react";
+import { findItem, listenDecorationMedia } from "@/lib/decorations";
 
 /**
  * Circle avatar (photo or initial) with the equipped frame image overlaid
@@ -10,13 +11,21 @@ import { findItem } from "@/lib/decorations";
  */
 export default function FramedAvatar({ frameId, name, photoURL, size = 56, ring = true }) {
   const frame = frameId ? findItem("frame", frameId) : null;
+  const [media, setMedia] = useState(null);
+
+  useEffect(() => {
+    if (!frameId) { setMedia(null); return undefined; }
+    return listenDecorationMedia("frame", (map) => setMedia(map[frameId] || null));
+  }, [frameId]);
+
+  const liveFrame = frame ? { ...frame, ...(media || {}) } : null;
   const initial = (name || "?").charAt(0).toUpperCase();
   // Most frame PNGs have their transparent "window" sized so the default
   // 1.82x overlay lines up with the avatar circle. A few assets (denim's
   // pocket art has a smaller-than-usual window) need a bigger overlay so
   // their window actually matches the avatar instead of the photo poking
   // out past the frame. frameScale on the catalog item overrides the default.
-  const frameMultiplier = frame?.frameScale || 1.82;
+  const frameMultiplier = liveFrame?.frameScale || 1.82;
 
   return (
     <div className="relative shrink-0 avatar-premium framed-avatar" data-frame-id={frameId || "none"} style={{ width: size, height: size }}>
@@ -32,9 +41,9 @@ export default function FramedAvatar({ frameId, name, photoURL, size = 56, ring 
           </span>
         )}
       </div>
-      {frame?.video ? (
+      {liveFrame?.video ? (
         <video
-          src={frame.video}
+          src={liveFrame.video}
           className="pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 select-none"
           style={{ width: size * frameMultiplier, height: size * frameMultiplier, objectFit: "contain" }}
           autoPlay
@@ -46,7 +55,7 @@ export default function FramedAvatar({ frameId, name, photoURL, size = 56, ring 
         frame?.image && (
           // eslint-disable-next-line @next/next/no-img-element
           <img
-            src={frame.image}
+            src={liveFrame.image}
             alt=""
             // Frame PNGs aren't all square (e.g. 256x157) — forcing equal
             // width/height with no object-fit stretched them, distorting

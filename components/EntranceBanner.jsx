@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { listenEntranceFeed } from "@/lib/rooms";
 
 /**
@@ -79,39 +80,60 @@ export default function EntranceBanner({ roomId }) {
   const hasRide = !!(current.vehicleVideo || current.vehicleImage);
 
   // Full-screen takeover for video vehicle entrances.
+  // IMPORTANT: render into document.body so the overlay is never clipped by
+  // the room's rounded/overflow-hidden video container. This makes the ride
+  // entrance cover the entire phone viewport, like Bigo-style entry effects.
   if (current.vehicleVideo) {
-    return (
-      <div className="pointer-events-none fixed inset-0 z-[70] flex items-center justify-center bg-black/40 entrance-fullscreen">
+    const fullscreen = (
+      <div
+        className="entrance-fullscreen pointer-events-auto fixed inset-0 z-[9999] flex items-center justify-center bg-black"
+        style={{
+          width: "100vw",
+          height: "100dvh",
+          minHeight: "100vh",
+          paddingTop: "env(safe-area-inset-top)",
+          paddingRight: "env(safe-area-inset-right)",
+          paddingBottom: "env(safe-area-inset-bottom)",
+          paddingLeft: "env(safe-area-inset-left)",
+        }}
+        role="dialog"
+        aria-label="Vehicle entrance"
+      >
         <video
           src={current.vehicleVideo}
-          className="h-full w-full object-contain"
+          className="h-full w-full object-cover"
           autoPlay
           muted
           playsInline
+          preload="auto"
           onEnded={finishFullscreen}
+          onError={finishFullscreen}
         />
-        <div className="pointer-events-none absolute inset-x-0 bottom-24 flex justify-center px-6">
-          <p className="rounded-full bg-black/50 px-5 py-2 text-center text-base text-ink drop-shadow backdrop-blur-sm">
+        <div className="pointer-events-none absolute inset-x-0 bottom-[max(2rem,env(safe-area-inset-bottom))] flex justify-center px-5">
+          <p className="rounded-full bg-black/55 px-5 py-2 text-center text-base text-white drop-shadow-lg backdrop-blur-md">
             <span className="font-bold">{current.name}</span>{" "}
-            <span className="text-ink/80">rides in on</span>{" "}
+            <span className="text-white/80">rides in on</span>{" "}
             <span className="font-bold text-gold">{current.vehicleName}</span> 🎉
           </p>
         </div>
         <style jsx>{`
           .entrance-fullscreen {
-            animation: fadeIn 0.25s ease-out;
+            animation: fadeIn 0.22s ease-out both;
+            overscroll-behavior: none;
+          }
+          .entrance-fullscreen video {
+            display: block;
+            max-width: none;
+            max-height: none;
           }
           @keyframes fadeIn {
-            from {
-              opacity: 0;
-            }
-            to {
-              opacity: 1;
-            }
+            from { opacity: 0; }
+            to { opacity: 1; }
           }
         `}</style>
       </div>
     );
+    return typeof document !== "undefined" ? createPortal(fullscreen, document.body) : null;
   }
 
   return (
@@ -130,6 +152,13 @@ export default function EntranceBanner({ roomId }) {
             alt=""
             className="h-12 w-20 rounded-full object-cover ring-2 ring-white/50"
           />
+        ) : current.avatar ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={current.avatar}
+            alt={current.name || "User"}
+            className="h-11 w-11 rounded-full object-cover ring-2 ring-white/30"
+          />
         ) : (
           <span className="flex h-11 w-11 items-center justify-center rounded-full bg-panel2 text-lg ring-2 ring-white/30">
             👋
@@ -143,7 +172,7 @@ export default function EntranceBanner({ roomId }) {
               <span className="font-bold text-gold">{current.vehicleName}</span> 🎉
             </>
           ) : (
-            <span className="text-ink/80">joined the room</span>
+            <span className="text-ink/80">joined the room • everyone can see this</span>
           )}
         </p>
       </div>

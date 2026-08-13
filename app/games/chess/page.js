@@ -26,6 +26,8 @@ export default function ChessPage() {
   const [selected, setSelected] = useState(null); // square like "e2"
   const [stake, setStake] = useState(0);
   const [sessionId, setSessionId] = useState(null);
+  const [soloFen, setSoloFen] = useState(null);
+  const [soloWinner, setSoloWinner] = useState(null);
 
   useEffect(() => {
     if (!matchId) return;
@@ -40,11 +42,12 @@ export default function ChessPage() {
 
   const chess = useMemo(() => {
     const c = new Chess();
-    if (match?.fen) {
-      try { c.load(match.fen); } catch { /* ignore corrupt fen, start fresh */ }
+    const sourceFen = phase === "solo" || phase === "soloFinished" ? soloFen : match?.fen;
+    if (sourceFen) {
+      try { c.load(sourceFen); } catch { /* ignore corrupt fen, start fresh */ }
     }
     return c;
-  }, [match?.fen]);
+  }, [match?.fen, soloFen, phase]);
 
   if (loading || !user) {
     return <main className="game-screen game-screen min-h-screen bg-void flex items-center justify-center text-mist">Loading…</main>;
@@ -52,6 +55,15 @@ export default function ChessPage() {
 
   const myColor = match?.players?.find((p) => p.uid === user.uid)?.color;
   const myTurn = phase === "playing" && myColor && chess.turn() === myColor[0];
+
+  function startSolo() {
+    const fresh = new Chess();
+    setSoloFen(fresh.fen());
+    setSoloWinner(null);
+    setSelected(null);
+    setError("");
+    setPhase("solo");
+  }
 
   async function startQuick() {
     setError(""); setBusy(true);
@@ -101,27 +113,45 @@ export default function ChessPage() {
   }, [match?.status, match?.colorsAssigned]);
 
   async function playMove(from, to) {
+    if (phase === "solo") {
+      try {
+        const game = new Chess(soloFen || new Chess().fen());
+        const move = game.move({ from, to, promotion: "q" });
+        if (!move) { setSelected(null); return; }
+        setSoloFen(game.fen());
+        setSelected(null);
+        if (game.isGameOver()) { setSoloWinner(game.isCheckmate() ? user.uid : null); setPhase("soloFinished"); return; }
+        setTimeout(() => {
+          const aiGame = new Chess(game.fen());
+          const moves = aiGame.moves({ verbose: true });
+          if (!moves.length) { setSoloWinner(user.uid); setPhase("soloFinished"); return; }
+          const aiMove = moves[Math.floor(Math.random() * moves.length)];
+          aiGame.move({ from: aiMove.from, to: aiMove.to, promotion: aiMove.promotion || "q" });
+          setSoloFen(aiGame.fen());
+          if (aiGame.isGameOver()) { setSoloWinner(aiGame.isCheckmate() ? "computer" : null); setPhase("soloFinished"); }
+        }, 550);
+      } catch { setSelected(null); }
+      return;
+    }
     if (!myTurn) return;
     setError("");
     try {
       const move = chess.move({ from, to, promotion: "q" });
       if (!move) { setSelected(null); return; }
       const finished = chess.isGameOver();
-      const iWon = chess.isCheckmate(); // after my move, opponent has no legal reply
+      const iWon = chess.isCheckmate();
       await updateCasualMatch(matchId, {
-        fen: chess.fen(),
-        lastMove: { from, to },
+        fen: chess.fen(), lastMove: { from, to },
         status: finished ? "finished" : "playing",
         winner: finished ? (iWon ? user.uid : null) : null,
       });
       setSelected(null);
-    } catch {
-      setSelected(null);
-    }
+    } catch { setSelected(null); }
   }
 
   function onSquareClick(square) {
-    if (!myTurn) return;
+    if (phase === "solo" && chess.turn() !== "w") return;
+    if (!myTurn && phase !== "solo") return;
     if (selected) {
       if (selected === square) { setSelected(null); return; }
       playMove(selected, square);
@@ -143,9 +173,7 @@ export default function ChessPage() {
         </header>
         <div className="px-4">
           <GameWalletControls profile={profile} stake={stake} setStake={setStake} busy={busy} />
-          <button disabled={busy} onClick={startQuick} className="w-full rounded-xl bg-gradient-to-r from-teal-400 to-yellow-300 py-4 font-bold text-black disabled:opacity-60">
-            ⚡ Quick Match
-          </button>
+          <div className="grid grid-cols-2 gap-2"><button onClick={startSolo} className="rounded-xl bg-gradient-to-r from-teal-400 to-yellow-300 py-4 font-bold text-black">🤖 Solo vs Computer</button><button disabled={busy} onClick={startQuick} className="rounded-xl bg-panel py-4 font-bold text-ink ring-1 ring-white/10 disabled:opacity-60">⚡ Quick Match</button></div>
           {error && <p className="mt-3 rounded-xl bg-red-500/10 p-3 text-sm text-red-300">{error}</p>}
         </div>
       </main>
@@ -167,7 +195,7 @@ export default function ChessPage() {
     );
   }
 
-  if (phase === "playing" || phase === "finished") {
+  if (phase === "playing" || phase === "finished" || phase === "solo" || phase === "soloFinished") {
     const board = chess.board(); // 8x8, board[0] = rank 8
     const opponent = match?.players?.find((p) => p.uid !== user.uid);
 
@@ -176,11 +204,9 @@ export default function ChessPage() {
         <header className="flex items-center justify-between px-4 pt-6 pb-3">
           <Link href="/games" className="text-2xl text-mist">‹</Link>
           <p className="text-sm font-semibold">
-            {phase === "finished"
-              ? match.winner ? (match.winner === user.uid ? "You won! 🏆" : "You lost") : "Draw"
-              : chess.isCheck() ? "Check!" : myTurn ? "Your move" : "Opponent's move"}
+            {phase === "finished" ? (match.winner ? (match.winner === user.uid ? "You won! 🏆" : "You lost") : "Draw") : phase === "soloFinished" ? (soloWinner === user.uid ? "You won! 🏆" : soloWinner === "computer" ? "Computer won" : "Draw") : chess.isCheck() ? "Check!" : phase === "solo" ? (chess.turn() === "w" ? "Your move" : "Computer thinking…") : myTurn ? "Your move" : "Opponent's move"}
           </p>
-          <span className="text-xs text-mist">vs {opponent?.name || "…"}</span>
+          <span className="text-xs text-mist">{phase === "solo" || phase === "soloFinished" ? "vs Computer" : `vs ${opponent?.name || "…"}`}</span>
         </header>
 
         <div className="mx-4 grid grid-cols-8 overflow-hidden rounded-2xl ring-1 ring-white/10">
@@ -207,7 +233,7 @@ export default function ChessPage() {
         {phase === "finished" && (
           <div className="mx-4 mt-5">
             <button
-              onClick={() => { setMatchId(null); setMatch(null); setSelected(null); setPhase("setup"); }}
+              onClick={() => { setMatchId(null); setMatch(null); setSoloFen(null); setSoloWinner(null); setSelected(null); setPhase("setup"); }}
               className="w-full rounded-full bg-gradient-to-r from-teal-400 to-yellow-300 py-3 font-bold text-black"
             >
               Play Again

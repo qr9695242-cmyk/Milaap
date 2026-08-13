@@ -1,7 +1,7 @@
 // Ludo entry is paid in Coins. The full pot goes straight back to the winner's Coins balance — coin-to-coin, no Diamond conversion.
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useAuth } from "@/lib/AuthContext";
 import { friendlyFirebaseError } from "@/lib/errors";
@@ -73,6 +73,8 @@ export default function LudoPage() {
   const [localSix, setLocalSix] = useState(0);
   const [localWinner, setLocalWinner] = useState(null);
   const [localMessage, setLocalMessage] = useState("Match entry choose karein.");
+  const [localSolo, setLocalSolo] = useState(false);
+  const localAiBusyRef = useRef(false);
 
   useEffect(() => {
     if (!user) return;
@@ -112,10 +114,20 @@ export default function LudoPage() {
   const canOnlineRoll = phase === "online" && match?.status === "playing" && onlineColor === onlineTurnColor && match?.canRoll && !rolling;
 
   function startLocal(count = localPlayerCount) {
+    localAiBusyRef.current = false;
+    setLocalSolo(false);
     const colors = count === 4 ? COLORS : ["red", "yellow"];
     setLocalPlayerCount(count); setLocalColors(colors);
     setLocalTokens(emptyTokens(colors)); setLocalTurnIdx(0); setLocalDice(null); setLocalSelectable([]); setLocalSix(0); setLocalWinner(null);
     setLocalMessage(`${COLOR_META[colors[0]].label} ka turn — dice roll karein!`); setPhase("local");
+  }
+
+  function startSolo() {
+    const colors = ["red", "yellow"];
+    localAiBusyRef.current = false;
+    setLocalSolo(true); setLocalPlayerCount(2); setLocalColors(colors);
+    setLocalTokens(emptyTokens(colors)); setLocalTurnIdx(0); setLocalDice(null); setLocalSelectable([]); setLocalSix(0); setLocalWinner(null);
+    setLocalMessage("Aap Red hain — computer ke against khelein!"); setPhase("local");
   }
 
   async function startMatch(matchMode) {
@@ -179,6 +191,29 @@ export default function LudoPage() {
     }, 350);
   }
 
+  useEffect(() => {
+    if (phase !== "local" || !localSolo || localColors[localTurnIdx] !== "yellow" || rolling || localAiBusyRef.current) return;
+    localAiBusyRef.current = true;
+    const timer = setTimeout(() => {
+      setRolling(true);
+      setTimeout(() => {
+        const value = rollDice();
+        setLocalDice(value);
+        setRolling(false);
+        const movable = getMovableTokens(localTokens, "yellow", value);
+        if (!movable.length) {
+          setLocalMessage(`Computer ne ${value} roll kiya — valid move nahi.`);
+          setTimeout(() => { localAiBusyRef.current = false; localNextTurn(); }, 500);
+          return;
+        }
+        const preferred = [...movable].sort((a, b) => (b.relativePos || -1) - (a.relativePos || -1))[0];
+        setLocalMessage(`Computer ne ${value} roll kiya.`);
+        setTimeout(() => { localAiBusyRef.current = false; localMove(preferred.id, value); }, 450);
+      }, 350);
+    }, 700);
+    return () => clearTimeout(timer);
+  }, [phase, localSolo, localTurnIdx, rolling, localTokens]);
+
   async function onlineRoll() {
     if (!canOnlineRoll) return;
     setRolling(true); setError("");
@@ -225,7 +260,7 @@ export default function LudoPage() {
         <div><p className="mb-2 text-sm font-semibold">Players</p><div className="grid grid-cols-2 gap-2 mb-4"><button onClick={() => setPlayerCount(2)} className={`rounded-xl p-3 text-left ring-1 ${playerCount === 2 ? "bg-gradient-to-br from-teal-400 to-yellow-300 text-black ring-transparent" : "bg-panel text-ink ring-white/10"}`}><b>2 Players</b><span className="block text-xs opacity-70">Winner takes full pot</span></button><button onClick={() => setPlayerCount(4)} className={`rounded-xl p-3 text-left ring-1 ${playerCount === 4 ? "bg-gradient-to-br from-teal-400 to-yellow-300 text-black ring-transparent" : "bg-panel text-ink ring-white/10"}`}><b>4 Players</b><span className="block text-xs opacity-70">Winner takes full pot</span></button></div><p className="mb-2 text-sm font-semibold">Entry / Match Coins</p><div className="grid grid-cols-2 gap-2">{LUDO_STAKES.map((s) => <button key={s} onClick={() => setStake(s)} className={`rounded-xl p-3 text-left ring-1 ${stake === s ? "bg-gradient-to-br from-teal-400 to-yellow-300 text-black ring-transparent" : "bg-panel text-ink ring-white/10"}`}><b>{formatCoins(s)}</b><span className="block text-xs opacity-70">Winner: 🪙 {ludoWinnerCoins(s * playerCount).toLocaleString()}</span></button>)}</div></div>
         <div className="grid grid-cols-2 gap-2"><button disabled={busy} onClick={() => startMatch("quick")} className="rounded-xl bg-gradient-to-r from-teal-400 to-yellow-300 py-4 font-bold text-black">⚡ Quick Match</button><button disabled={busy} onClick={() => startMatch("room")} className="rounded-xl bg-panel py-4 font-bold ring-1 ring-white/10">🔐 Create Room</button></div>
         <div className="rounded-2xl bg-panel p-4"><p className="text-sm font-semibold">Room code se join</p><div className="mt-2 flex gap-2"><input value={roomCode} onChange={(e) => setRoomCode(e.target.value.replace(/\D/g, "").slice(0, 6))} placeholder="6 digit code" inputMode="numeric" className="min-w-0 flex-1 rounded-xl bg-panel2 px-3 py-3 outline-none"/><button disabled={busy} onClick={joinCode} className="rounded-xl bg-panel2 px-4 py-3 font-semibold">Join</button></div></div>
-        <div className="grid grid-cols-2 gap-2"><button onClick={() => startLocal(2)} className="w-full rounded-xl bg-panel2 py-3 text-sm text-mist">Practice: 2 Player Local</button><button onClick={() => startLocal(4)} className="w-full rounded-xl bg-panel2 py-3 text-sm text-mist">Practice: 4 Player Local</button></div>
+        <div className="grid grid-cols-3 gap-2"><button onClick={startSolo} className="w-full rounded-xl bg-gradient-to-r from-teal-400 to-yellow-300 py-3 text-sm font-bold text-black">🤖 Solo vs Computer</button><button onClick={() => startLocal(2)} className="w-full rounded-xl bg-panel2 py-3 text-sm text-mist">2 Player Local</button><button onClick={() => startLocal(4)} className="w-full rounded-xl bg-panel2 py-3 text-sm text-mist">4 Player Local</button></div>
         {error && <p className="rounded-xl bg-red-500/10 p-3 text-sm text-red-300">{error}</p>}
         <div><div className="mb-2 flex justify-between"><p className="text-sm font-semibold">Open Quick Matches</p><span className="text-xs text-mist">{waitingRooms.filter(r => r.mode === "quick" && Number(r.playerCount || 2) === playerCount).length}</span></div>{waitingRooms.filter(r => r.mode === "quick" && Number(r.playerCount || 2) === playerCount && r.hostUid !== user.uid).map(r => <button key={r.id} onClick={() => { setStake(r.stake); joinWaiting(r.id); }} className="mb-2 flex w-full items-center justify-between premium-card p-3 text-left"><span><b>{r.players?.[0]?.name || "Player"}</b><span className="ml-2 text-xs text-mist">{formatCoins(r.stake)} coins</span></span><span className="rounded-lg bg-teal-400 px-3 py-1 text-xs font-bold text-black">Join</span></button>)}</div>
       </div>
@@ -282,11 +317,11 @@ export default function LudoPage() {
 
   if (phase === "online" || phase === "finished" || phase === "local" || phase === "localFinished") return (
     <main className="game-screen min-h-screen bg-void text-ink flex flex-col pb-8">
-      <header className="flex items-center gap-3 px-4 pt-6 pb-2"><button onClick={() => { setMatchId(null); setMatch(null); setPhase("setup"); }} className="text-2xl text-mist">‹</button><div><h1 className="font-display text-xl font-bold">Ludo</h1><p className="text-sm text-mist">{phase.startsWith("local") ? "Free local practice" : `${formatCoins(match?.stake)} coin real-time ${match?.playerCount || 2}-player match`}</p></div></header>
+      <header className="flex items-center gap-3 px-4 pt-6 pb-2"><button onClick={() => { setMatchId(null); setMatch(null); setPhase("setup"); }} className="text-2xl text-mist">‹</button><div><h1 className="font-display text-xl font-bold">Ludo</h1><p className="text-sm text-mist">{phase.startsWith("local") ? (localSolo ? "Solo vs Computer • free practice" : "Free local practice") : `${formatCoins(match?.stake)} coin real-time ${match?.playerCount || 2}-player match`}</p></div></header>
       {phase === "online" && <div className="mx-4 mb-2 rounded-xl bg-panel px-3 py-2 text-xs flex justify-between"><span>Room: <b>{match?.roomCode}</b></span><span>Pot: <b>{formatCoins(match?.pot)}</b></span></div>}
       <div className="grid grid-cols-2 gap-2 px-4 py-3">{activeColors.map(color => <div key={color} className="rounded-xl px-3 py-2 flex items-center justify-between bg-panel" style={(color === currentColor && (phase === "local" || onlineTurnColor === color)) ? {boxShadow:`0 0 0 2px ${COLOR_META[color].hex}`} : undefined}><span className="flex items-center gap-2 text-sm"><span className="h-3 w-3 rounded-full" style={{background:COLOR_META[color].hex}}/>{match?.players?.find(p=>p.color===color)?.name || COLOR_META[color].label}</span><span className="text-xs text-mist">{(displayTokens[color]||[]).filter(t=>t.relativePos===FINISH_STEP).length}/4</span></div>)}</div>
       <div className="px-4"><div className="w-full aspect-square rounded-2xl overflow-hidden border border-white/10" style={{display:"grid",gridTemplateColumns:"repeat(15,1fr)",gridTemplateRows:"repeat(15,1fr)"}}>{GRID_CELLS.flatMap((row,r)=>row.map((info,c)=>{const key=`${r},${c}`, occupants=occupancy.get(key)||[]; return <div key={key} className="relative flex items-center justify-center" style={{background:cellBg(info),border:info.kind==="path"||info.kind==="stretch"?"1px solid rgba(255,255,255,0.06)":undefined}}>{info.kind==="path"&&info.safe&&!info.startColor&&<span className="text-[8px] text-mist">★</span>}{info.kind==="center"&&<span className="text-lg">🏁</span>}{occupants.length>0&&<div className="absolute inset-0 flex flex-wrap items-center justify-center gap-[1px] p-[1px]">{occupants.map(o=><button key={o.tokenId} onClick={(e)=>{e.stopPropagation(); if(phase.startsWith("local")) localMove(o.tokenId,localDice); else onlineMove(o.tokenId);}} disabled={!o.movable} className="rounded-full" style={{width:occupants.length>1?"48%":"72%",height:occupants.length>1?"48%":"72%",background:COLOR_META[o.color].hex,border:o.movable?"2px solid white":"1px solid rgba(0,0,0,.4)",boxShadow:o.movable?"0 0 6px 1px rgba(255,255,255,.8)":undefined}}/>)}</div>}</div>}))}</div></div>
-      <div className="flex flex-col items-center gap-4 pt-6"><p className="px-8 text-center text-sm text-mist">{message}</p><button onClick={phase.startsWith("local") ? localRoll : onlineRoll} disabled={phase === "finished" || phase === "localFinished" || (phase === "online" && !canOnlineRoll) || rolling} className={`h-20 w-20 rounded-2xl flex items-center justify-center text-4xl font-bold ${(!rolling && (phase.startsWith("local") || canOnlineRoll)) ? "bg-gradient-to-br from-teal-400 to-yellow-300 text-black" : "bg-panel2 text-mist"}`}>{rolling?"🎲":diceValue??"🎲"}</button>{(phase === "finished" || phase === "localFinished")&&<div className="text-center"><p className="font-display text-lg font-bold">🏆 Match Finished</p><p className="mt-1 text-sm text-mist">{match?.winner===user.uid || localWinner===onlineColor ? "Aap winner hain!" : "Winner match complete ho gaya."}</p>{phase==="finished" && match?.winner===user.uid && <p className="mt-2 text-2xl font-bold text-gold">🪙 {(match?.coinsWon ?? ludoWinnerCoins(match?.pot)).toLocaleString()}</p>}{phase==="finished" && match?.winner===user.uid && <p className="mt-1 text-xs text-mist">Wallet ke Coins balance mein credit ho gaye</p>}<button onClick={()=>{setMatchId(null);setMatch(null);setPhase("setup");}} className="mt-4 rounded-xl bg-gradient-to-r from-teal-400 to-yellow-300 px-6 py-2 font-semibold text-black">New Match</button></div>}{error&&<p className="px-5 text-center text-sm text-red-300">{error}</p>}</div>
+      <div className="flex flex-col items-center gap-4 pt-6"><p className="px-8 text-center text-sm text-mist">{message}</p><button onClick={phase.startsWith("local") ? localRoll : onlineRoll} disabled={phase === "finished" || phase === "localFinished" || (phase === "online" && !canOnlineRoll) || (phase === "local" && localSolo && currentColor === "yellow") || rolling} className={`h-20 w-20 rounded-2xl flex items-center justify-center text-4xl font-bold ${(!rolling && (phase.startsWith("local") || canOnlineRoll)) ? "bg-gradient-to-br from-teal-400 to-yellow-300 text-black" : "bg-panel2 text-mist"}`}>{rolling?"🎲":diceValue??"🎲"}</button>{(phase === "finished" || phase === "localFinished")&&<div className="text-center"><p className="font-display text-lg font-bold">🏆 Match Finished</p><p className="mt-1 text-sm text-mist">{match?.winner===user.uid || localWinner===onlineColor ? "Aap winner hain!" : "Winner match complete ho gaya."}</p>{phase==="finished" && match?.winner===user.uid && <p className="mt-2 text-2xl font-bold text-gold">🪙 {(match?.coinsWon ?? ludoWinnerCoins(match?.pot)).toLocaleString()}</p>}{phase==="finished" && match?.winner===user.uid && <p className="mt-1 text-xs text-mist">Wallet ke Coins balance mein credit ho gaye</p>}<button onClick={()=>{setMatchId(null);setMatch(null);setPhase("setup");}} className="mt-4 rounded-xl bg-gradient-to-r from-teal-400 to-yellow-300 px-6 py-2 font-semibold text-black">New Match</button></div>}{error&&<p className="px-5 text-center text-sm text-red-300">{error}</p>}</div>
     </main>
   );
   return null;

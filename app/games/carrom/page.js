@@ -30,6 +30,9 @@ export default function CarromPage() {
   const [angle, setAngle] = useState(270);
   const [power, setPower] = useState(60);
   const [lastShot, setLastShot] = useState(null);
+  const [soloRound, setSoloRound] = useState(0);
+  const [soloScore, setSoloScore] = useState(0);
+  const [soloBotScore, setSoloBotScore] = useState(0);
 
   const coinPos = useMemo(() => randomCoinPos((match?.round || 0) + 1), [match?.round]);
 
@@ -52,6 +55,10 @@ export default function CarromPage() {
 
   if (loading || !user) return <main className="game-screen game-screen min-h-screen bg-void flex items-center justify-center text-mist">Loading…</main>;
 
+  function startSolo() {
+    setSoloRound(0); setSoloScore(0); setSoloBotScore(0); setLastShot(null); setLocked(false); setError(""); setPhase("solo");
+  }
+
   async function startMatch() {
     setError(""); setBusy(true);
     try {
@@ -72,7 +79,23 @@ export default function CarromPage() {
   }
 
   async function shoot() {
-    if (locked || !match) return;
+    if (locked) return;
+    if (phase === "solo") {
+      setLocked(true);
+      const result = simulateCarromShot({ strikerPos: STRIKER_POS, angleDeg: angle, power, coinPos, pockets: POCKETS });
+      let points = result.potted ? 100 : result.hit ? Math.max(0, Math.round(55 - Math.min(...POCKETS.map((p) => distance(result.coinFinal.x, result.coinFinal.y, p.x, p.y))) / 5)) : 0;
+      setLastShot({ ...result, points });
+      const bot = Math.floor(35 + Math.random() * 66);
+      const nextRound = soloRound + 1;
+      setTimeout(() => {
+        const nextMine = soloScore + points; const nextBot = soloBotScore + bot;
+        setSoloScore(nextMine); setSoloBotScore(nextBot); setSoloRound(nextRound); setLocked(false);
+        if (nextRound >= ROUNDS) setPhase("soloFinished");
+        else setLastShot(null);
+      }, 650);
+      return;
+    }
+    if (!match) return;
     setLocked(true);
     const result = simulateCarromShot({ strikerPos: STRIKER_POS, angleDeg: angle, power, coinPos, pockets: POCKETS });
     let points = 0;
@@ -112,7 +135,7 @@ export default function CarromPage() {
           <button onClick={() => setStake(stake === 0 ? 100 : stake)} className={`rounded-xl py-3 text-sm font-bold ${stake > 0 ? "bg-gradient-to-r from-yellow-300 to-orange-400 text-black" : "bg-white/10"}`}>🪙 Coin Match</button>
         </div>
         {stake > 0 && <div className="mt-4 grid grid-cols-4 gap-2">{STAKES.slice(1).map((v) => <button key={v} onClick={() => setStake(v)} className={`rounded-xl py-2 text-xs font-bold ${stake === v ? "bg-yellow-300 text-black" : "bg-white/10"}`}>🪙 {v}</button>)}</div>}
-        <button disabled={busy} onClick={startMatch} className="mt-5 w-full rounded-full bg-gradient-to-r from-teal-400 to-yellow-300 py-4 font-bold text-black disabled:opacity-60">{busy ? "Finding…" : "⚡ Quick Match"}</button>
+        <div className="grid grid-cols-2 gap-2 mt-5"><button onClick={startSolo} className="rounded-full bg-gradient-to-r from-teal-400 to-yellow-300 py-4 font-bold text-black">🤖 Solo Practice</button><button disabled={busy} onClick={startMatch} className="mt-5 w-full rounded-full bg-gradient-to-r from-teal-400 to-yellow-300 py-4 font-bold text-black disabled:opacity-60">{busy ? "Finding…" : "⚡ Quick Match"}</button></div>
         {error && <p className="mt-3 rounded-xl bg-red-500/10 p-3 text-sm text-red-300">{error}</p>}
       </section>
     </main>
@@ -129,16 +152,16 @@ export default function CarromPage() {
     </main>
   );
 
-  if (phase === "playing") {
-    const opponent = match.players?.find((p) => p.uid !== user.uid);
-    const mine = match.scores?.[user.uid] || 0, theirs = match.scores?.[opponent?.uid] || 0;
+  if (phase === "playing" || phase === "solo") {
+    const opponent = match?.players?.find((p) => p.uid !== user.uid);
+    const mine = phase === "solo" ? soloScore : (match?.scores?.[user.uid] || 0), theirs = phase === "solo" ? soloBotScore : (match?.scores?.[opponent?.uid] || 0);
     const vec = angleToVector(angle);
     const previewLen = (power / 100) * 200;
     const previewEnd = { x: STRIKER_POS.x + vec.dx * previewLen, y: STRIKER_POS.y + vec.dy * previewLen };
     const shownCoin = lastShot ? lastShot.coinFinal : coinPos;
     return (
       <main className="game-screen min-h-screen bg-void text-ink pb-10">
-        <header className="flex items-center justify-between px-4 pt-6 pb-3"><Link href="/games" className="text-2xl text-mist">‹</Link><p className="text-sm font-semibold">Round {(match.round || 0) + 1}/{ROUNDS}</p><span className="text-xs text-mist">You {mine} — {theirs} {opponent?.name || "…"}</span></header>
+        <header className="flex items-center justify-between px-4 pt-6 pb-3"><Link href="/games" className="text-2xl text-mist">‹</Link><p className="text-sm font-semibold">Round {(phase === "solo" ? soloRound : (match?.round || 0)) + 1}/{ROUNDS}</p><span className="text-xs text-mist">You {mine} — {theirs} {phase === "solo" ? "Computer" : (opponent?.name || "…")}</span></header>
         <section className="mx-4 rounded-3xl bg-panel p-5 ring-1 ring-white/10">
           <p className="text-center text-xs text-mist">Angle aur power set karein, phir Shoot karein — striker coin ko pocket ki taraf bhejega.</p>
           <svg viewBox="0 0 300 300" className="mt-4 w-full rounded-2xl bg-amber-900/40">
@@ -157,16 +180,20 @@ export default function CarromPage() {
             <label className="text-xs text-mist">Power: {power}%</label>
             <input type="range" min="10" max="100" value={power} onChange={(e) => setPower(Number(e.target.value))} disabled={locked} className="w-full" />
           </div>
-          <button disabled={locked} onClick={shoot} className="mt-5 w-full rounded-full bg-gradient-to-r from-teal-400 to-yellow-300 py-4 font-bold text-black disabled:opacity-60">{locked ? "Waiting for opponent…" : "🎯 Shoot"}</button>
+          <button disabled={locked} onClick={shoot} className="mt-5 w-full rounded-full bg-gradient-to-r from-teal-400 to-yellow-300 py-4 font-bold text-black disabled:opacity-60">{locked ? (phase === "solo" ? "Computer turn…" : "Waiting for opponent…") : "🎯 Shoot"}</button>
         </section>
         {error && <p className="mx-4 mt-3 text-sm text-red-300">{error}</p>}
       </main>
     );
   }
 
+  if (phase === "soloFinished") return (
+    <main className="game-screen min-h-screen bg-void text-ink flex items-center justify-center px-5"><div className="w-full max-w-sm rounded-3xl bg-panel p-7 text-center ring-1 ring-white/10"><div className="text-6xl">{soloScore >= soloBotScore ? "🏆" : "😔"}</div><h1 className="mt-4 text-2xl font-bold">{soloScore >= soloBotScore ? "You Won!" : "Computer Won"}</h1><p className="mt-2 text-sm text-mist">Solo Carrom • You {soloScore} — {soloBotScore} Computer</p><button onClick={startSolo} className="mt-6 w-full rounded-full bg-gradient-to-r from-teal-400 to-yellow-300 py-3 font-bold text-black">Play Again</button></div></main>
+  );
+
   if (phase === "finished") {
-    const opponent = match.players?.find((p) => p.uid !== user.uid);
-    const mine = match.scores?.[user.uid] || 0, theirs = match.scores?.[opponent?.uid] || 0;
+    const opponent = match?.players?.find((p) => p.uid !== user.uid);
+    const mine = phase === "solo" ? soloScore : (match?.scores?.[user.uid] || 0), theirs = phase === "solo" ? soloBotScore : (match?.scores?.[opponent?.uid] || 0);
     const won = match.winner === user.uid, draw = !match.winner;
     return <main className="game-screen min-h-screen bg-void text-ink flex items-center justify-center px-5"><div className="w-full max-w-sm rounded-3xl bg-panel p-7 text-center ring-1 ring-white/10"><div className="text-6xl">{draw ? "🤝" : won ? "🏆" : "😔"}</div><h1 className="mt-4 text-2xl font-bold">{draw ? "Draw" : won ? "You Won!" : "You Lost"}</h1><p className="mt-2 text-sm text-mist">Carrom • You {mine} — {theirs} {opponent?.name || ""}</p>{stake > 0 && <p className="mt-2 text-xs text-yellow-200">🪙 Coin Match: {stake} entry</p>}<button onClick={() => { setMatchId(null); setMatch(null); setPhase("setup"); }} className="mt-6 w-full rounded-full bg-gradient-to-r from-teal-400 to-yellow-300 py-3 font-bold text-black">Play Again</button></div></main>;
   }
