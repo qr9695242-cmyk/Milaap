@@ -6,7 +6,7 @@ import { useAuth } from "@/lib/AuthContext";
 import { quickMatchCasual, listenCasualMatch, updateCasualMatch, cancelCasualMatch, settleCasualCoinMatch } from "@/lib/casualMatches";
 import { archeryScore, clamp, distance } from "@/lib/aimEngine";
 
-const STAKES = [0, 100, 500, 1000, 5000];
+const STAKES = [0, 200000, 500000, 1000000, 2000000, 5000000];
 const ROUNDS = 3;
 const CENTER = { x: 150, y: 150 };
 const RADIUS = 135;

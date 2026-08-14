@@ -6,7 +6,7 @@ import { useAuth } from "@/lib/AuthContext";
 import { quickMatchCasual, listenCasualMatch, updateCasualMatch, cancelCasualMatch, settleCasualCoinMatch } from "@/lib/casualMatches";
 import { simulateCarromShot, angleToVector, distance } from "@/lib/aimEngine";
 
-const STAKES = [0, 100, 500, 1000, 5000];
+const STAKES = [0, 200000, 500000, 1000000, 2000000, 5000000];
 const ROUNDS = 3;
 const STRIKER_POS = { x: 150, y: 258 };
 const POCKETS = [{ x: 22, y: 22 }, { x: 278, y: 22 }, { x: 22, y: 278 }, { x: 278, y: 278 }];

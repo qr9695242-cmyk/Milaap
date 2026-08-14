@@ -14,7 +14,7 @@ import {
   quickMatchCasual, listenCasualMatch, updateCasualMatch, cancelCasualMatch, settleCasualCoinMatch,
 } from "@/lib/casualMatches";
 
-const STAKES = [0, 100, 500, 1000, 5000];
+const STAKES = [0, 200000, 500000, 1000000, 2000000, 5000000];
 const ROUNDS = 3;
 
 const GAME_RULES = {

@@ -249,7 +249,9 @@ export default function AdminPage() {
     return (
       <main className="flex min-h-screen items-center justify-center bg-void">
         <p className="text-mist text-sm">Loading…</p>
-      </main>
+      
+<div className="mt-4"><a href="/admin/diamond-settings" className="inline-flex rounded-xl bg-black px-4 py-3 text-sm font-black text-white">💎 Diamond Settings</a></div>
+</main>
     );
   }
 
