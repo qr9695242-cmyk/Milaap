@@ -74,7 +74,8 @@ service cloud.firestore {
     // can show the current reward + whether the offer is live, admin-only
     // write (see lib/referral.js setReferralConfig, used from /admin).
     match /config/{docId} {
-      allow read: if true;
+      // Referral settings are public because the invite page displays them.
+      allow read: if docId == "referral" || isAdmin();
       allow write: if isAdmin();
     }
 
@@ -113,6 +114,13 @@ service cloud.firestore {
         )
       );
       allow delete: if false;
+    }
+
+    // Optional Ludo summary used only for medals. Paid Ludo state remains
+    // server-authoritative in Cloud Functions.
+    match /users/{userId}/ludoWallet/{docId} {
+      allow read: if request.auth != null && request.auth.uid == userId;
+      allow write: if false;
     }
 
     // Profile visitors — owner-only read (who visited me); any signed-in
@@ -304,6 +312,24 @@ service cloud.firestore {
           (request.auth.uid == resource.data.toUid || isAdmin());
         allow delete: if false;
       }
+    }
+
+    // Withdrawal requests — user submits their payout destination; only admins
+    // can see everyone else's requests or approve/reject them. Approval also
+    // deducts the requested Diamonds in a transaction (see lib/withdrawals.js).
+    match /withdrawalRequests/{reqId} {
+      allow create: if request.auth != null
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.status == "pending"
+        && request.resource.data.diamonds is int
+        && request.resource.data.diamonds >= 500
+        && request.resource.data.account is string
+        && request.resource.data.account.size() > 0
+        && request.resource.data.accountName is string
+        && request.resource.data.accountName.size() > 0;
+      allow read: if request.auth != null && (resource.data.uid == request.auth.uid || isAdmin());
+      allow update: if isAdmin();
+      allow delete: if false;
     }
 
     // Recharge requests — user submits; only an admin (or ideally a Cloud

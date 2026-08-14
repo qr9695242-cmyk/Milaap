@@ -7,7 +7,7 @@ import { useAuth } from "@/lib/AuthContext";
 import { listenFollowers, listenFollowing } from "@/lib/follow";
 import UserRow from "@/components/UserRow";
 
-// See app/wallet/recharge/page.js for why this needs a Suspense wrapper:
+// Wallet/recharge is now unified at app/wallet/page.js.
 // useSearchParams() requires one, or a static build can fail on this page.
 export default function ConnectionsPage() {
   return (

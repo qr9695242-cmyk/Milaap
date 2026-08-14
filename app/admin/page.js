@@ -14,7 +14,8 @@ import { listenActiveRooms, endRoom } from "@/lib/rooms";
 import { listenPendingReports, resolveReport } from "@/lib/moderation";
 import { getReferralConfig, setReferralConfig, DEFAULT_REFERRAL_COINS, DEFAULT_REFERRAL_MONTHS } from "@/lib/referral";
 import { getExchangeRate, setExchangeRate } from "@/lib/exchangeRate";
-import { DIAMOND_TO_COIN_RATE } from "@/lib/config";
+import { DIAMOND_TO_COIN_RATE, DIAMOND_CASH_RUPEES, MIN_WITHDRAWAL_DIAMONDS } from "@/lib/config";
+import { listenPendingWithdrawals, approveWithdrawal, rejectWithdrawal } from "@/lib/withdrawals";
 import {
   listenAllEventBanners,
   createEventBanner,
@@ -28,6 +29,7 @@ export default function AdminPage() {
   const { user, profile, loading } = useAuth();
   const router = useRouter();
   const [recharges, setRecharges] = useState([]);
+  const [withdrawals, setWithdrawals] = useState([]);
   const [rooms, setRooms] = useState([]);
   const [reports, setReports] = useState([]);
   const [listenerErrors, setListenerErrors] = useState({});
@@ -75,9 +77,11 @@ export default function AdminPage() {
       setListenerErrors((prev) => ({ ...prev, [key]: err?.message || String(err) }));
     const unsub1 = listenPendingRecharges(setRecharges, setErr("recharges"));
     const unsub2 = listenActiveRooms(setRooms, setErr("rooms"));
+    const unsub3 = listenPendingWithdrawals(setWithdrawals, setErr("withdrawals"));
     return () => {
       unsub1();
       unsub2();
+      unsub3();
     };
   }, [isAdmin]);
 
@@ -244,13 +248,22 @@ export default function AdminPage() {
     }
   }
 
+  async function handleApproveWithdrawal(req) {
+    setBusyId(req.id);
+    try { await approveWithdrawal(req); } catch (err) { alert(err.message); } finally { setBusyId(null); }
+  }
+
+  async function handleRejectWithdrawal(req) {
+    setBusyId(req.id);
+    try { await rejectWithdrawal(req.id); } catch (err) { alert(err.message); } finally { setBusyId(null); }
+  }
+
 
   if (loading || !isModerator) {
     return (
       <main className="flex min-h-screen items-center justify-center bg-void">
         <p className="text-mist text-sm">Loading…</p>
       
-<div className="mt-4"><a href="/admin/diamond-settings" className="inline-flex rounded-xl bg-black px-4 py-3 text-sm font-black text-white">💎 Diamond Settings</a></div>
 </main>
     );
   }
@@ -322,6 +335,39 @@ export default function AdminPage() {
                       >
                         Reject
                       </button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
+      )}
+
+      {isAdmin && (
+        <section className="mt-8">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <h2 className="font-display text-sm font-bold text-ink">Pending Withdrawals ({withdrawals.length})</h2>
+              <p className="mt-1 text-[11px] text-mist">Admin ko user ka payment method, account number, Diamonds aur private payout amount nazar aayega.</p>
+            </div>
+            <span className="premium-chip text-gold">MIN {MIN_WITHDRAWAL_DIAMONDS}</span>
+          </div>
+          {listenerErrors.withdrawals && <p className="mt-2 text-xs text-neon-pink">⚠ Load nahi ho saka: {listenerErrors.withdrawals}</p>}
+          {withdrawals.length === 0 ? <p className="mt-3 text-xs text-mist">Nothing pending.</p> : (
+            <div className="mt-3 space-y-2">
+              {withdrawals.map((r) => (
+                <div key={r.id} className="premium-card p-4">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="text-sm font-black text-ink">{r.name}</p>
+                      <p className="mt-1 text-xs text-mist">💎 {Number(r.diamonds || 0).toLocaleString()} Diamonds</p>
+                      <p className="mt-1 text-xs font-bold text-gold">{r.method} · {r.account}</p>
+                      <p className="mt-1 text-xs text-mist">Private payout: Rs {Number(r.diamonds || 0) * DIAMOND_CASH_RUPEES}</p>
+                    </div>
+                    <div className="flex shrink-0 gap-2">
+                      <button onClick={() => handleApproveWithdrawal(r)} disabled={busyId === r.id} className="rounded-full bg-emerald-500 px-3 py-2 text-xs font-black text-black disabled:opacity-50">Paid / Approve</button>
+                      <button onClick={() => handleRejectWithdrawal(r)} disabled={busyId === r.id} className="rounded-full bg-neon-pink/15 px-3 py-2 text-xs font-black text-neon-pink disabled:opacity-50">Reject</button>
                     </div>
                   </div>
                 </div>

@@ -355,3 +355,29 @@ exports.ludoMove = onCall(async (request) => {
   });
   return result;
 });
+
+// --- 5. Server-authoritative Diamond -> Coin exchange -----------------
+// The exchange rate stays private to the backend. The browser never reads
+// config/exchangeRate, so the public wallet only exposes the action/result.
+exports.exchangeDiamonds = onCall(async (request) => {
+  const uid = requireAuth(request);
+  const diamonds = Math.floor(Number(request.data?.diamonds));
+  if (!Number.isFinite(diamonds) || diamonds < 1) {
+    throw new HttpsError("invalid-argument", "Invalid Diamond amount.");
+  }
+  const configSnap = await db.collection("config").doc("exchangeRate").get();
+  const rate = Number(configSnap.data()?.rate || 15000);
+  if (!Number.isFinite(rate) || rate <= 0) throw new HttpsError("failed-precondition", "Exchange rate unavailable.");
+
+  const userRef = db.collection("users").doc(uid);
+  let coinsGained = 0;
+  await db.runTransaction(async (tx) => {
+    const user = await tx.get(userRef);
+    if (!user.exists) throw new HttpsError("failed-precondition", "Profile not found.");
+    const currentDiamonds = Number(user.data().diamonds || 0);
+    if (currentDiamonds < diamonds) throw new HttpsError("failed-precondition", "Not enough Diamonds.");
+    coinsGained = Math.floor(diamonds * rate);
+    tx.update(userRef, { diamonds: currentDiamonds - diamonds, coins: Number(user.data().coins || 0) + coinsGained });
+  });
+  return { coinsGained };
+});

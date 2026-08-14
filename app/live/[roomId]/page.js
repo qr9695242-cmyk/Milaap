@@ -386,7 +386,7 @@ export default function LiveRoomPage() {
 
       {/* Video stage — two slots, side by side once a co-host joins */}
       <div className="mx-4 mt-2 room-toolbar flex items-center gap-2 overflow-x-auto p-2">
-        <Link href="/wallet/recharge" className="room-action shrink-0">💰<span className="mt-1 block text-[9px] font-bold text-gold">Recharge</span></Link>
+        <Link href="/wallet" className="room-action shrink-0">💰<span className="mt-1 block text-[9px] font-bold text-gold">Recharge</span></Link>
         <button onClick={() => setShowGifts(true)} className="room-action shrink-0">🎁<span className="mt-1 block text-[9px] font-bold text-ink">Gifts</span></button>
         <Link href="/profile/frames" className="room-action shrink-0">🖼️<span className="mt-1 block text-[9px] font-bold text-ink">Frame</span></Link>
         <Link href="/profile/vehicles" className="room-action shrink-0">🚘<span className="mt-1 block text-[9px] font-bold text-ink">Ride</span></Link>

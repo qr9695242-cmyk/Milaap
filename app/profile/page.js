@@ -140,7 +140,7 @@ export default function ProfilePage() {
       </Link>
 
       <section className="mx-4 mt-4 grid grid-cols-2 gap-3">
-        <Link href="/wallet/recharge" className="premium-card p-4 active:scale-[.98]">
+        <Link href="/wallet" className="premium-card p-4 active:scale-[.98]">
           <div className="flex items-center justify-between"><span className="text-2xl">💰</span><span className="premium-chip text-gold">18 PACKS</span></div>
           <p className="mt-3 text-sm font-black text-ink">Buy Coins</p>
           <p className="mt-1 text-[10px] text-mist">Premium coin packs up to 3B</p>

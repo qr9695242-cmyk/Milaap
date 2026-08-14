@@ -19,7 +19,7 @@ import PremiumCard from "@/components/PremiumCard";
 // useSearchParams() (used below to read ?ref=<code> from invite links)
 // opts this page into client-side rendering during prerender, and Next.js
 // requires it to sit below a <Suspense> boundary — see the identical note
-// in app/wallet/recharge/page.js.
+// in the unified app/wallet/page.js.
 export default function SignupPage() {
   return (
     <Suspense

@@ -12,9 +12,11 @@ import { findItem, listenDecorationMedia } from "@/lib/decorations";
 export default function FramedAvatar({ frameId, name, photoURL, size = 56, ring = true }) {
   const frame = frameId ? findItem("frame", frameId) : null;
   const [media, setMedia] = useState(null);
+  const [frameLoaded, setFrameLoaded] = useState(false);
 
   useEffect(() => {
-    if (!frameId) { setMedia(null); return undefined; }
+    if (!frameId) { setMedia(null); setFrameLoaded(false); return undefined; }
+    setFrameLoaded(false);
     return listenDecorationMedia("frame", (map) => setMedia(map[frameId] || null));
   }, [frameId]);
 
@@ -34,7 +36,7 @@ export default function FramedAvatar({ frameId, name, photoURL, size = 56, ring 
       >
         {photoURL ? (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={photoURL} alt={name || "avatar"} className="h-full w-full object-cover" />
+          <img key={photoURL} src={photoURL} alt={name || "avatar"} className="h-full w-full object-cover" />
         ) : (
           <span className="font-bold" style={{ fontSize: size * 0.4 }}>
             {initial}
@@ -55,6 +57,7 @@ export default function FramedAvatar({ frameId, name, photoURL, size = 56, ring 
         frame?.image && (
           // eslint-disable-next-line @next/next/no-img-element
           <img
+            key={liveFrame.image}
             src={liveFrame.image}
             alt=""
             // Frame PNGs aren't all square (e.g. 256x157) — forcing equal
@@ -62,8 +65,9 @@ export default function FramedAvatar({ frameId, name, photoURL, size = 56, ring 
             // the art. object-fit: contain keeps each frame's real aspect
             // ratio and centers it in the same bounding box.
             className="pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 select-none"
-            style={{ width: size * frameMultiplier, height: size * frameMultiplier, objectFit: "contain" }}
             draggable={false}
+            onLoad={() => setFrameLoaded(true)}
+            style={{ width: size * frameMultiplier, height: size * frameMultiplier, objectFit: "contain", opacity: frameLoaded ? 1 : 0 }}
           />
         )
       )}
