@@ -75,8 +75,8 @@ export default function AdminPage() {
  setListenerErrors((prev) => ({ ...prev, [key]: err?.message || String(err) }));
  const unsub1 = listenPendingRecharges(setRecharges, setErr("recharges"));
  const unsub2 = listenActiveRooms(setRooms, setErr("rooms"));
- return (
-  <div className="mx-auto max-w-5xl px-4 pt-4"><Link href="/admin/withdrawals" className="inline-flex rounded-xl bg-panel2 px-4 py-3 text-xs font-black ring-1 ring-white/10">💸 Manual Withdrawals</Link></div>) => {
+
+ return () => {
  unsub1();
  unsub2();
  };
