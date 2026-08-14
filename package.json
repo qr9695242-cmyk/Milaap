@@ -1,0 +1,29 @@
+{
+ "name": "milaap",
+ "version": "0.1.0",
+ "private": true,
+ "scripts": {
+ "predev": "node scripts/gen-version.js",
+ "dev": "next dev",
+ "prebuild": "node scripts/gen-version.js",
+ "build": "next build",
+ "start": "next start",
+ "lint": "next lint",
+ "upload:decorations": "node scripts/upload-decoration-assets.mjs"
+ },
+ "dependencies": {
+ "next": "14.2.5",
+ "react": "^18.3.1",
+ "react-dom": "^18.3.1",
+ "firebase": "^10.12.4",
+ "agora-rtc-sdk-ng": "^4.20.0",
+ "agora-access-token": "^2.0.4",
+ "chess.js": "^1.0.0-beta.8",
+ "lucide-react": "^0.383.0"
+ },
+ "devDependencies": {
+ "autoprefixer": "^10.4.19",
+ "postcss": "^8.4.40",
+ "tailwindcss": "^3.4.7"
+ }
+}
