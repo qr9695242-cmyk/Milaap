@@ -74,8 +74,7 @@ service cloud.firestore {
     // can show the current reward + whether the offer is live, admin-only
     // write (see lib/referral.js setReferralConfig, used from /admin).
     match /config/{docId} {
-      // Referral settings are public because the invite page displays them.
-      allow read: if docId == "referral" || isAdmin();
+      allow read: if true;
       allow write: if isAdmin();
     }
 
@@ -114,13 +113,6 @@ service cloud.firestore {
         )
       );
       allow delete: if false;
-    }
-
-    // Optional Ludo summary used only for medals. Paid Ludo state remains
-    // server-authoritative in Cloud Functions.
-    match /users/{userId}/ludoWallet/{docId} {
-      allow read: if request.auth != null && request.auth.uid == userId;
-      allow write: if false;
     }
 
     // Profile visitors — owner-only read (who visited me); any signed-in
@@ -314,24 +306,6 @@ service cloud.firestore {
       }
     }
 
-    // Withdrawal requests — user submits their payout destination; only admins
-    // can see everyone else's requests or approve/reject them. Approval also
-    // deducts the requested Diamonds in a transaction (see lib/withdrawals.js).
-    match /withdrawalRequests/{reqId} {
-      allow create: if request.auth != null
-        && request.resource.data.uid == request.auth.uid
-        && request.resource.data.status == "pending"
-        && request.resource.data.diamonds is int
-        && request.resource.data.diamonds >= 500
-        && request.resource.data.account is string
-        && request.resource.data.account.size() > 0
-        && request.resource.data.accountName is string
-        && request.resource.data.accountName.size() > 0;
-      allow read: if request.auth != null && (resource.data.uid == request.auth.uid || isAdmin());
-      allow update: if isAdmin();
-      allow delete: if false;
-    }
-
     // Recharge requests — user submits; only an admin (or ideally a Cloud
     // Function) should approve/reject.
     match /rechargeRequests/{reqId} {
@@ -421,6 +395,22 @@ service cloud.firestore {
         (resource.data.status == "waiting" && request.auth.uid in request.resource.data.playerUids)
       );
       allow delete: if request.auth != null && resource.data.hostUid == request.auth.uid;
+    }
+
+
+    // Production cash-out records. Clients can only read their own history.
+    // Creation/approval/rejection is server-only through callable Functions.
+    match /withdrawalRequests/{requestId} {
+      allow read: if request.auth != null &&
+        (resource.data.uid == request.auth.uid || isAdmin());
+      allow write: if false;
+    }
+
+    // Immutable financial audit ledger. Admin/server only.
+    match /walletLedger/{entryId} {
+      allow read: if isAdmin() ||
+        (request.auth != null && resource.data.uid == request.auth.uid);
+      allow write: if false;
     }
 
   }

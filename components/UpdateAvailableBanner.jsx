@@ -15,63 +15,63 @@ const CHECK_INTERVAL_MS = 60 * 1000; // poll every minute
  * store needed; this is the PWA equivalent.
  */
 export default function UpdateAvailableBanner() {
-  const [updateAvailable, setUpdateAvailable] = useState(false);
-  const [reloading, setReloading] = useState(false);
+ const [updateAvailable, setUpdateAvailable] = useState(false);
+ const [reloading, setReloading] = useState(false);
 
-  const checkForUpdate = useCallback(async () => {
-    try {
-      const res = await fetch(`/version.json?t=${Date.now()}`, { cache: "no-store" });
-      if (!res.ok) return;
-      const data = await res.json();
-      if (data.version && data.version !== BUILD_VERSION) {
-        setUpdateAvailable(true);
-      }
-    } catch {
-      // offline or request failed — silently skip, we'll try again next tick
-    }
-  }, []);
+ const checkForUpdate = useCallback(async () => {
+ try {
+ const res = await fetch(`/version.json?t=${Date.now()}`, { cache: "no-store" });
+ if (!res.ok) return;
+ const data = await res.json();
+ if (data.version && data.version !== BUILD_VERSION) {
+ setUpdateAvailable(true);
+ }
+ } catch {
+ // offline or request failed — silently skip, we'll try again next tick
+ }
+ }, []);
 
-  useEffect(() => {
-    checkForUpdate();
-    const interval = setInterval(checkForUpdate, CHECK_INTERVAL_MS);
-    function onVisible() {
-      if (document.visibilityState === "visible") checkForUpdate();
-    }
-    document.addEventListener("visibilitychange", onVisible);
-    return () => {
-      clearInterval(interval);
-      document.removeEventListener("visibilitychange", onVisible);
-    };
-  }, [checkForUpdate]);
+ useEffect(() => {
+ checkForUpdate();
+ const interval = setInterval(checkForUpdate, CHECK_INTERVAL_MS);
+ function onVisible() {
+ if (document.visibilityState === "visible") checkForUpdate();
+ }
+ document.addEventListener("visibilitychange", onVisible);
+ return () => {
+ clearInterval(interval);
+ document.removeEventListener("visibilitychange", onVisible);
+ };
+ }, [checkForUpdate]);
 
-  async function handleUpdate() {
-    setReloading(true);
-    try {
-      if ("serviceWorker" in navigator) {
-        const reg = await navigator.serviceWorker.getRegistration();
-        if (reg) await reg.update();
-      }
-    } catch {
-      // ignore — reload below fetches fresh assets regardless
-    }
-    window.location.reload();
-  }
+ async function handleUpdate() {
+ setReloading(true);
+ try {
+ if ("serviceWorker" in navigator) {
+ const reg = await navigator.serviceWorker.getRegistration();
+ if (reg) await reg.update();
+ }
+ } catch {
+ // ignore — reload below fetches fresh assets regardless
+ }
+ window.location.reload();
+ }
 
-  if (!updateAvailable) return null;
+ if (!updateAvailable) return null;
 
-  return (
-    <div className="fixed inset-x-0 bottom-20 z-50 mx-auto flex w-[calc(100%-2rem)] max-w-md items-center justify-between gap-3 rounded-2xl bg-panel px-4 py-3 ring-1 ring-white/10 shadow-3d">
-      <div className="min-w-0">
-        <p className="text-xs font-semibold text-ink">Naya version available 🎉</p>
-        <p className="text-[11px] text-mist">Latest features ke liye update karo</p>
-      </div>
-      <button
-        onClick={handleUpdate}
-        disabled={reloading}
-        className="shrink-0 rounded-full bg-glow-gradient px-4 py-2 text-xs font-bold text-ink disabled:opacity-60"
-      >
-        {reloading ? "Updating…" : "Update"}
-      </button>
-    </div>
-  );
+ return (
+ <div className="fixed inset-x-0 bottom-20 z-50 mx-auto flex w-[calc(100%-2rem)] max-w-md items-center justify-between gap-3 rounded-2xl bg-panel px-4 py-3 ring-1 ring-white/10 shadow-3d">
+ <div className="min-w-0">
+ <p className="text-xs font-semibold text-ink">Naya version available 🎉</p>
+ <p className="text-[11px] text-mist">Latest features ke liye update karo</p>
+ </div>
+ <button
+ onClick={handleUpdate}
+ disabled={reloading}
+ className="shrink-0 rounded-full bg-glow-gradient px-4 py-2 text-xs font-bold text-ink disabled:opacity-60"
+ >
+ {reloading ? "Updating…" : "Update"}
+ </button>
+ </div>
+ );
 }

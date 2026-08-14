@@ -10,62 +10,62 @@ import AnalyticsPageviews from "@/components/AnalyticsPageviews";
 import NoZoom from "@/components/NoZoom";
 
 const display = Playfair_Display({
-  subsets: ["latin"],
-  variable: "--font-display",
-  weight: ["700", "800", "900"],
+ subsets: ["latin"],
+ variable: "--font-display",
+ weight: ["700", "800", "900"],
 });
 
 const body = Inter({
-  subsets: ["latin"],
-  variable: "--font-body",
-  weight: ["400", "500", "600"],
+ subsets: ["latin"],
+ variable: "--font-body",
+ weight: ["400", "500", "600"],
 });
 
 export const metadata = {
-  title: "Milaap — Streaming, Rooms & Rewards",
-  description: "Go live, join audio rooms, and earn.",
-  manifest: "/manifest.json",
-  appleWebApp: {
-    capable: true,
-    statusBarStyle: "black-translucent",
-    title: "Milaap",
-  },
-  icons: {
-    icon: [
-      { url: "/icon-192.png", sizes: "192x192", type: "image/png" },
-      { url: "/icon-512.png", sizes: "512x512", type: "image/png" },
-    ],
-    apple: "/apple-touch-icon.png",
-  },
+ title: "Milaap — Streaming, Rooms & Rewards",
+ description: "Go live, join audio rooms, and earn.",
+ manifest: "/manifest.json",
+ appleWebApp: {
+ capable: true,
+ statusBarStyle: "black-translucent",
+ title: "Milaap",
+ },
+ icons: {
+ icon: [
+ { url: "/icon-192.png", sizes: "192x192", type: "image/png" },
+ { url: "/icon-512.png", sizes: "512x512", type: "image/png" },
+ ],
+ apple: "/apple-touch-icon.png",
+ },
 };
 
 export const viewport = {
-  width: "device-width",
-  initialScale: 1,
-  maximumScale: 1,
-  userScalable: false,
-  viewportFit: "cover",
-  themeColor: "#0A0806",
+ width: "device-width",
+ initialScale: 1,
+ maximumScale: 1,
+ userScalable: false,
+ viewportFit: "cover",
+ themeColor: "#0A0806",
 };
 
 export default function RootLayout({ children }) {
-  return (
-    <html lang="en" className={`${display.variable} ${body.variable}`}>
-      <body className="font-body bg-void min-h-screen">
-        <ThemeProvider>
-          <LanguageProvider>
-            <AuthProvider>
-              <NoZoom />
-              {children}
-              <InstallPrompt />
-              <UpdateAvailableBanner />
-              <Suspense fallback={null}>
-                <AnalyticsPageviews />
-              </Suspense>
-            </AuthProvider>
-          </LanguageProvider>
-        </ThemeProvider>
-      </body>
-    </html>
-  );
+ return (
+ <html lang="en" className={`${display.variable} ${body.variable}`}>
+ <body className="font-body bg-void min-h-screen">
+ <ThemeProvider>
+ <LanguageProvider>
+ <AuthProvider>
+ <NoZoom />
+ {children}
+ <InstallPrompt />
+ <UpdateAvailableBanner />
+ <Suspense fallback={null}>
+ <AnalyticsPageviews />
+ </Suspense>
+ </AuthProvider>
+ </LanguageProvider>
+ </ThemeProvider>
+ </body>
+ </html>
+ );
 }
