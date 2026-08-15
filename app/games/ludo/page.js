@@ -11,7 +11,7 @@ import {
  settleCasualCoinMatch,
 } from "@/lib/casualMatches";
 
-const STAKES = [200000, 500000, 1000000, 2000000, 5000000];
+import { MATCH_STAKES as STAKES } from "@/lib/gameEconomy";
 
 const COLORS = {
  red: "#ef3038",
@@ -109,6 +109,7 @@ function initialState(players, stake = 0, mode = "local") {
  turnIndex: 0,
  dice: 1,
  lastRoll: 1,
+ diceRolled: false,
  status: "playing",
  winner: null,
  pot: stake * players.length,
@@ -120,7 +121,7 @@ export default function LudoPage() {
 
  const [mode, setMode] = useState("local");
  const [playerCount, setPlayerCount] = useState(2);
- const [stake, setStake] = useState(1000);
+ const [stake, setStake] = useState(STAKES[0]);
  const [phase, setPhase] = useState("setup");
  const [state, setState] = useState(null);
  const [matchId, setMatchId] = useState(null);
@@ -168,9 +169,7 @@ export default function LudoPage() {
 
  const me = user?.uid || "local-red";
  const currentPlayer = state?.players?.[state?.turnIndex] || null;
- const myTurn = state?.mode === "local"
- ? true
- : currentPlayer?.uid === me;
+ const myTurn = state?.mode === "local" || state?.mode === "local-room" ? true : currentPlayer?.uid === me;
 
  const winnerName = useMemo(() => {
  if (!state?.winner) return "";
@@ -214,6 +213,7 @@ export default function LudoPage() {
  turnIndex: 0,
  dice: 1,
  lastRoll: 1,
+ diceRolled: false,
  status: "waiting",
  winner: null,
  pot: stake * 2,
@@ -251,7 +251,7 @@ export default function LudoPage() {
  }
 
  function roll() {
- if (!state || rolling || !myTurn || state.status !== "playing") return;
+ if (!state || rolling || state.diceRolled || !myTurn || state.status !== "playing") return;
 
  setRolling(true);
  let n = 0;
@@ -261,7 +261,7 @@ export default function LudoPage() {
  if (n >= 7) {
  clearInterval(timer);
  const result = diceRoll();
- setState((s) => s ? ({ ...s, dice: result, lastRoll: result }) : s);
+ setState((s) => s ? ({ ...s, dice: result, lastRoll: result, diceRolled: true }) : s);
  setRolling(false);
  setMessage(`Dice: ${result}. Move a token.`);
  }
@@ -270,6 +270,11 @@ export default function LudoPage() {
 
  async function moveToken(color, index) {
  if (!state || state.status !== "playing" || !myTurn) return;
+ const activeColor = state.players?.[state.turnIndex]?.color;
+ if (activeColor && color !== activeColor) {
+ setMessage(`Ab ${activeColor.toUpperCase()} player ki turn hai.`);
+ return;
+ }
 
  const dice = state.dice || state.lastRoll || 1;
  const current = state.tokens?.[color]?.[index] ?? -1;
@@ -304,6 +309,7 @@ export default function LudoPage() {
  tokens,
  dice: 1,
  lastRoll: dice,
+ diceRolled: false,
  status: won ? "finished" : "playing",
  winner: won ? state.players?.find((p) => p.color === color)?.uid : null,
  turnIndex: dice === 6 && !won
@@ -515,11 +521,11 @@ export default function LudoPage() {
 
  <section className="mx-auto mt-4 max-w-2xl px-4 text-center">
  <div className="min-h-6 text-xs font-bold text-white/70">{message}</div>
- <button disabled={!myTurn || rolling} onClick={roll}
+ <button disabled={!myTurn || rolling || state.diceRolled} onClick={roll}
  className={`mx-auto mt-2 grid h-20 w-20 place-items-center rounded-2xl bg-white p-2 shadow-2xl ${rolling ? "animate-spin" : ""}`}>
  <DiceFace n={state.dice || state.lastRoll || 1} />
  </button>
- <button disabled={!myTurn || rolling} onClick={roll}
+ <button disabled={!myTurn || rolling || state.diceRolled} onClick={roll}
  className="mt-3 rounded-full bg-gradient-to-r from-teal-400 to-yellow-300 px-9 py-3 text-sm font-black text-black disabled:opacity-40">
  {rolling ? "ROLLING…" : "ROLL DICE"}
  </button>

@@ -13,9 +13,12 @@ Added/updated:
 - Same entry levels in GameWalletControls-backed games and the Archery/Carrom/dynamic game stake selectors.
 - Withdrawal request UI at /withdrawal.
 - Wallet page at /wallet.
-- Display conversion: 20,000 Coins = 1 Diamond; 1 Diamond = Rs. 4 reference value.
+- Display conversion: 50,000 Coins = 1 Diamond; 1 Diamond = Rs. 1 reference value.
 
 Important:
 The withdrawal page is a request/UI flow. Actual cash payout requires an authorized
 payment provider and server-side verification. This update does not turn wagered
 game entries into cashable Diamonds or implement a house-edge wagering payout system.
+
+- Unified virtual economy: 200 gift Coins = 1 Diamond; 1 Diamond = Rs. 1 reference; 1 Diamond = 25,000 Coins internal exchange; game/match stakes = 200K/500K/1M/2M/5M Coins.
+- Level thresholds are now coherent across Gift (200), VIP (200), Host (8) and Family (5) ladders.

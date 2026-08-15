@@ -23,6 +23,8 @@ import {
 } from "@/lib/eventBanners";
 import { uploadToCloudinary } from "@/lib/cloudinary";
 import { GIFT_CATALOG } from "@/lib/gifts";
+import { collection, onSnapshot, query, where, doc, updateDoc, runTransaction } from "firebase/firestore";
+import { db } from "@/lib/firebase";
 
 export default function AdminPage() {
  const { user, profile, loading } = useAuth();
@@ -30,6 +32,7 @@ export default function AdminPage() {
  const [recharges, setRecharges] = useState([]);
  const [rooms, setRooms] = useState([]);
  const [reports, setReports] = useState([]);
+ const [withdrawals, setWithdrawals] = useState([]);
  const [listenerErrors, setListenerErrors] = useState({});
  const [busyId, setBusyId] = useState(null);
  const [roleTargetUid, setRoleTargetUid] = useState("");
@@ -75,10 +78,14 @@ export default function AdminPage() {
  setListenerErrors((prev) => ({ ...prev, [key]: err?.message || String(err) }));
  const unsub1 = listenPendingRecharges(setRecharges, setErr("recharges"));
  const unsub2 = listenActiveRooms(setRooms, setErr("rooms"));
-
+ const withdrawalQuery = query(collection(db, "withdrawalRequests"), where("status", "==", "pending"));
+ const unsub3 = onSnapshot(withdrawalQuery, (snap) => {
+   setWithdrawals(snap.docs.map((d) => ({ id: d.id, ...d.data() })).sort((a,b) => String(b.createdAt?.seconds || "").localeCompare(String(a.createdAt?.seconds || ""))));
+ }, setErr("withdrawals"));
  return () => {
  unsub1();
  unsub2();
+ unsub3();
  };
  }, [isAdmin]);
 
@@ -114,6 +121,32 @@ export default function AdminPage() {
  const setErr = (err) => setListenerErrors((prev) => ({ ...prev, banners: err?.message || String(err) }));
  return listenAllEventBanners(setBanners, setErr);
  }, [isAdmin]);
+
+ async function handleWithdrawalStatus(id, status) {
+   setBusyId(id);
+   try {
+     const item = withdrawals.find((w) => w.id === id);
+     if (!item) throw new Error("Withdrawal request not found.");
+     await runTransaction(db, async (tx) => {
+       const reqRef = doc(db, "withdrawalRequests", id);
+       const reqSnap = await tx.get(reqRef);
+       if (!reqSnap.exists() || reqSnap.data()?.status !== "pending") throw new Error("This request was already reviewed.");
+       if (status === "rejected") {
+         const userRef = doc(db, "users", item.uid);
+         const userSnap = await tx.get(userRef);
+         if (!userSnap.exists()) throw new Error("User profile not found.");
+         const currentDiamonds = Math.floor(Number(userSnap.data()?.diamonds || 0));
+         tx.update(userRef, { diamonds: currentDiamonds + Math.floor(Number(item.diamonds || 0)) });
+       }
+       tx.update(reqRef, { status, reviewedAt: new Date().toISOString() });
+     });
+     setListenerErrors((prev) => ({ ...prev, withdrawals: "" }));
+   } catch (e) {
+     setListenerErrors((prev) => ({ ...prev, withdrawals: e?.message || String(e) }));
+   } finally {
+     setBusyId(null);
+   }
+ }
 
  async function handleReferralToggle(turnOn) {
  setReferralBusy(true);
@@ -485,6 +518,32 @@ export default function AdminPage() {
  </button>
  </div>
  {referralMessage && <p className="text-xs text-mist">{referralMessage}</p>}
+ </div>
+ </section>
+ )}
+
+ {isAdmin && (
+ <section className="mt-8">
+ <h2 className="font-display text-sm font-bold text-ink">Diamond Withdrawals</h2>
+ <p className="mt-1 text-xs text-mist">Pending payout requests from users. Review the payment details before approving.</p>
+ {listenerErrors.withdrawals && <p className="mt-2 text-xs text-neon-pink">Load error: {listenerErrors.withdrawals}</p>}
+ <div className="mt-3 space-y-2">
+ {withdrawals.length === 0 ? <p className="text-xs text-mist">No pending withdrawals.</p> : withdrawals.map((w) => (
+   <div key={w.id} className="premium-card p-3">
+     <div className="flex items-start justify-between gap-3">
+       <div className="min-w-0">
+         <p className="text-sm font-bold text-ink">💎 {Number(w.diamonds || 0).toLocaleString()} Diamonds</p>
+         <p className="mt-1 text-xs text-mist">{w.method} · {w.name} · {w.account}</p>
+         <p className="mt-1 text-[10px] text-mist">UID: {w.uid}</p>
+       </div>
+       <span className="rounded-full bg-gold/10 px-2 py-1 text-[10px] font-bold text-gold">PENDING</span>
+     </div>
+     <div className="mt-3 grid grid-cols-2 gap-2">
+       <button disabled={busyId === w.id} onClick={() => handleWithdrawalStatus(w.id, "approved")} className="rounded-xl bg-emerald-400/15 py-2 text-xs font-bold text-emerald-300 ring-1 ring-emerald-300/20">Approve</button>
+       <button disabled={busyId === w.id} onClick={() => handleWithdrawalStatus(w.id, "rejected")} className="rounded-xl bg-neon-pink/15 py-2 text-xs font-bold text-neon-pink ring-1 ring-neon-pink/20">Reject</button>
+     </div>
+   </div>
+ ))}
  </div>
  </section>
  )}

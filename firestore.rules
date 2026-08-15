@@ -1,4 +1,4 @@
-// Ludo entry is paid in Coins. Match winnings are credited as Diamonds at 2.5 Coins = 1 Diamond.
+// Ludo and other matches are paid and settled in Coins. Diamonds are reserved for gift earnings and withdrawal.
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
@@ -94,6 +94,15 @@ service cloud.firestore {
       allow read: if request.auth != null &&
         (request.auth.uid == newUserId || isAdmin());
       allow write: if false;
+    }
+
+    // Manual WhatsApp confirmation requests. Firebase cannot read normal WhatsApp chats;
+    // this only records the user's request/code for optional admin review.
+    match /whatsappVerificationRequests/{requestId} {
+      allow read: if request.auth != null && (resource.data.uid == request.auth.uid || isAdmin());
+      allow create: if request.auth != null && request.resource.data.uid == request.auth.uid;
+      allow update: if isAdmin();
+      allow delete: if false;
     }
 
     match /users/{userId} {
@@ -320,6 +329,21 @@ service cloud.firestore {
       allow delete: if false;
     }
 
+    // Diamond withdrawal requests. Users can submit only for themselves; admins can review/update status.
+    match /withdrawalRequests/{requestId} {
+      allow create: if request.auth != null
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.status == "pending"
+        && request.resource.data.diamonds is number
+        && request.resource.data.diamonds > 0
+        && request.resource.data.method in ["JazzCash", "Easypaisa", "Bank"]
+        && request.resource.data.account is string
+        && request.resource.data.name is string;
+      allow read: if request.auth != null && (resource.data.uid == request.auth.uid || isAdmin());
+      allow update: if isAdmin();
+      allow delete: if false;
+    }
+
     // Virtual game economy: each player may create/read only their own game sessions/history.
     // Coin balance changes still use the existing users/{uid} rule and are never
     // exposed as a second wallet. Sessions are idempotently settled by the app.
@@ -395,22 +419,6 @@ service cloud.firestore {
         (resource.data.status == "waiting" && request.auth.uid in request.resource.data.playerUids)
       );
       allow delete: if request.auth != null && resource.data.hostUid == request.auth.uid;
-    }
-
-
-    // Production cash-out records. Clients can only read their own history.
-    // Creation/approval/rejection is server-only through callable Functions.
-    match /withdrawalRequests/{requestId} {
-      allow read: if request.auth != null &&
-        (resource.data.uid == request.auth.uid || isAdmin());
-      allow write: if false;
-    }
-
-    // Immutable financial audit ledger. Admin/server only.
-    match /walletLedger/{entryId} {
-      allow read: if isAdmin() ||
-        (request.auth != null && resource.data.uid == request.auth.uid);
-      allow write: if false;
     }
 
   }

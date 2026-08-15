@@ -53,7 +53,7 @@ export default function EntranceBanner({ roomId }) {
  setCurrent(next);
  setPhase("in");
 
- if (next.vehicleVideo) {
+ if (next.vehicleVideo || next.vehicleImage) {
  // Full-screen video takeover: hold for up to 5s, or until the video
  // finishes (handled by onEnded below), whichever comes first.
  dismissTimerRef.current = setTimeout(() => finishFullscreen(), 5000);
@@ -83,7 +83,7 @@ export default function EntranceBanner({ roomId }) {
  // IMPORTANT: render into document.body so the overlay is never clipped by
  // the room's rounded/overflow-hidden video container. This makes the ride
  // entrance cover the entire phone viewport, like Bigo-style entry effects.
- if (current.vehicleVideo) {
+ if (current.vehicleVideo || current.vehicleImage) {
  const fullscreen = (
  <div
  className="entrance-fullscreen pointer-events-auto fixed inset-0 z-[9999] flex items-center justify-center bg-black"
@@ -99,6 +99,7 @@ export default function EntranceBanner({ roomId }) {
  role="dialog"
  aria-label="Vehicle entrance"
  >
+ {current.vehicleVideo ? (
  <video
  src={current.vehicleVideo}
  className="h-full w-full object-cover"
@@ -109,6 +110,15 @@ export default function EntranceBanner({ roomId }) {
  onEnded={finishFullscreen}
  onError={finishFullscreen}
  />
+ ) : (
+ <img
+ src={current.vehicleImage}
+ alt="Vehicle entrance"
+ className="h-full w-full object-cover"
+ onLoad={() => { dismissTimerRef.current = setTimeout(finishFullscreen, 4000); }}
+ onError={finishFullscreen}
+ />
+ )}
  <div className="pointer-events-none absolute inset-x-0 bottom-[max(2rem,env(safe-area-inset-bottom))] flex justify-center px-5">
  <p className="rounded-full bg-black/55 px-5 py-2 text-center text-base text-white drop-shadow-lg backdrop-blur-md">
  <span className="font-bold">{current.name}</span>{" "}

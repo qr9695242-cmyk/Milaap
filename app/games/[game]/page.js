@@ -14,7 +14,7 @@ import {
  quickMatchCasual, listenCasualMatch, updateCasualMatch, cancelCasualMatch, settleCasualCoinMatch,
 } from "@/lib/casualMatches";
 
-const STAKES = [0, 200000, 500000, 1000000, 2000000, 5000000];
+import { GAME_STAKES as STAKES } from "@/lib/gameEconomy";
 const ROUNDS = 3;
 
 const GAME_RULES = {
@@ -154,7 +154,7 @@ export default function GameDuelPage() {
  <p className="mb-2 text-xs font-semibold text-mist">Match type</p>
  <div className="grid grid-cols-2 gap-2">
  <button onClick={()=>setStake(0)} className={`rounded-xl py-3 text-sm font-bold ${stake===0?"bg-gradient-to-r from-teal-400 to-yellow-300 text-black":"bg-white/10"}`}>🆓 Free Match</button>
- <button onClick={()=>setStake(stake===0?100:stake)} className={`rounded-xl py-3 text-sm font-bold ${stake>0?"bg-gradient-to-r from-yellow-300 to-orange-400 text-black":"bg-white/10"}`}>🪙 Coin Match</button>
+ <button onClick={()=>setStake(stake===0?STAKES[1]:stake)} className={`rounded-xl py-3 text-sm font-bold ${stake>0?"bg-gradient-to-r from-yellow-300 to-orange-400 text-black":"bg-white/10"}`}>🪙 Coin Match</button>
  </div>
  </div>
  {stake>0 && <div className="mt-4"><p className="mb-2 text-xs font-semibold text-mist">Entry coins</p><div className="grid grid-cols-4 gap-2">{STAKES.slice(1).map(v=><button key={v} onClick={()=>setStake(v)} className={`rounded-xl py-2 text-xs font-bold ${stake===v?"bg-yellow-300 text-black":"bg-white/10"}`}>🪙 {v}</button>)}</div><p className="mt-2 text-[10px] text-mist">Coin entry selected: {stake}. Winner ko opponent ke entry coins milenge.</p></div>}

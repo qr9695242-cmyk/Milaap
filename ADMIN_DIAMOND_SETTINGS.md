@@ -3,8 +3,8 @@ Admin Diamond Settings update
 User-facing Wallet page is not the place for conversion settings.
 Added:
 - /admin/diamond-settings
-- Coins per Diamond editable (default 20,000)
-- Reference Rupees per Diamond editable (default Rs. 4)
+- Coins per Diamond editable (default 50,000)
+- Reference Rupees per Diamond editable (default Rs. 1)
 - Save button
 - Admin page link from the main admin page when available
 

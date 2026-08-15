@@ -5,8 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { useAuth } from "@/lib/AuthContext";
 import { RECHARGE_PACKAGES, submitRechargeRequest, claimFirstRechargeOffer } from "@/lib/wallet";
-import { getExchangeRate } from "@/lib/exchangeRate";
-import { SUPPORT_CONFIG, FIRST_RECHARGE_OFFER, DIAMOND_TO_COIN_RATE, GIFT_DIAMOND_RATE } from "@/lib/config";
+import { SUPPORT_CONFIG, FIRST_RECHARGE_OFFER } from "@/lib/config";
 
 // useSearchParams() opts the page into client-side rendering during
 // prerender, and Next.js requires it to sit below a <Suspense> boundary —
@@ -45,15 +44,10 @@ function RechargeContent() {
  const [busy, setBusy] = useState(false);
  // Live, admin-set rate (see /admin → "Exchange Rate"). Starts at the code
  // default so there's no flash before Firestore responds.
- const [diamondRate, setDiamondRate] = useState(DIAMOND_TO_COIN_RATE);
 
  useEffect(() => {
  if (!loading && !user) router.replace("/login");
  }, [loading, user, router]);
-
- useEffect(() => {
- getExchangeRate().then(setDiamondRate).catch(() => {});
- }, []);
 
  useEffect(() => {
  if (showFirstOfferPack) {
@@ -138,15 +132,14 @@ function RechargeContent() {
  return (
  <main className="min-h-screen bg-void px-5 pb-16 pt-6">
  <Link href="/wallet" className="text-lg text-ink/80">←</Link>
- <h1 className="mt-2 font-display text-2xl font-black text-ink">Recharge Coins</h1>
- <p className="mt-1 text-xs text-mist">5 premium coin packs • instant in-app balance after approval</p>
-
- <div className="mt-3 rounded-xl bg-panel px-4 py-3 text-[11px] text-mist ring-1 ring-white/5">
- <p>💎 Exchange rate: <span className="font-bold text-diamond">1 diamond = {diamondRate} coins</span></p>
- <p className="mt-0.5">🎁 Gift rate: <span className="font-bold text-diamond">{Math.round(1 / GIFT_DIAMOND_RATE)} coins spent = 1 diamond</span> earned by host</p>
+ <h1 className="mt-2 font-display text-2xl font-black text-ink">Get Coins</h1>
+ <p className="mt-1 text-xs text-mist">Choose a coin pack and recharge after payment verification.</p>
+ <div className="mt-5 rounded-2xl bg-panel p-5 ring-1 ring-white/10">
+   <p className="text-sm font-semibold text-ink">Coin balance</p>
+   <p className="mt-2 font-display text-3xl font-black text-ink">🪙 {(profile?.coins || 0).toLocaleString()}</p>
  </div>
-
- {showFirstOfferPack && (
+ <p className="mt-5 text-base font-bold text-ink">Recharge</p>
+{showFirstOfferPack && (
  <section className="mt-5">
  <p className="text-xs font-semibold text-mist">🎁 Your one-time Recharge Benefit</p>
  <button
@@ -179,7 +172,7 @@ function RechargeContent() {
  {/* Step 1: pick a package */}
  <section className="mt-5">
  <p className="text-xs font-semibold text-mist">1. Choose a package</p>
- <div className="mt-3 grid grid-cols-2 gap-3">
+ <div className="mt-3 grid grid-cols-3 gap-3">
  {RECHARGE_PACKAGES.map((pkg) => (
  <button
  key={pkg.id}
@@ -190,15 +183,17 @@ function RechargeContent() {
  : "bg-panel ring-white/5"
  }`}
  >
+ <div className="flex flex-col text-left">
  <div className="flex items-start justify-between gap-2">
- <p className="font-display text-lg font-extrabold text-ink">● {pkg.coins.toLocaleString()}</p>
- <span className="premium-chip text-gold">COINS</span>
+  <p className="font-display text-xl font-black text-ink">🪙 {(pkg.coins + (pkg.bonusCoins || 0)).toLocaleString()}</p>
+  <span className="rounded-full bg-black/10 px-2 py-1 text-[9px] font-black text-ink">TOTAL</span>
  </div>
- {pkg.bonusCoins > 0 && (
- <p className="mt-1 text-[11px] font-bold text-emerald-400">+{pkg.bonusCoins.toLocaleString()} bonus</p>
- )}
- <p className="mt-2 text-xs font-bold text-ink/80">Rs {pkg.priceRs.toLocaleString()}</p>
- <p className="mt-1 text-[9px] text-mist">Premium pack • {pkg.id.toUpperCase()}</p>
+ <p className="mt-1 text-sm font-black text-gold">Rs {pkg.priceRs.toLocaleString()}</p>
+ <div className="mt-2 space-y-0.5 text-[10px] text-mist">
+  <p>Base: {pkg.coins.toLocaleString()}</p>
+  <p>Bonus: +{(pkg.bonusCoins || 0).toLocaleString()}</p>
+ </div>
+ </div>
  </button>
  ))}
  </div>

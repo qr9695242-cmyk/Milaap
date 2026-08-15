@@ -1,6 +1,3 @@
-
-## Real-money foundation update (2026-08-14)
-See `REAL_MONEY_PRODUCTION.md`. Cash-out now uses server-side callable functions, KYC gating, atomic balance reservation, admin approval/rejection, and an immutable wallet ledger. Purchased/game Coins remain non-cashable.
 # Milaap — Phase 1
 
 Login/Signup + Home Screen + Profile, Firebase ke saath.

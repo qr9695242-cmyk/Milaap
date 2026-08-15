@@ -6,7 +6,7 @@ import { useAuth } from "@/lib/AuthContext";
 import { quickMatchCasual, listenCasualMatch, updateCasualMatch, cancelCasualMatch, settleCasualCoinMatch } from "@/lib/casualMatches";
 import { archeryScore, clamp, distance } from "@/lib/aimEngine";
 
-const STAKES = [0, 200000, 500000, 1000000, 2000000, 5000000];
+import { GAME_STAKES as STAKES } from "@/lib/gameEconomy";
 const ROUNDS = 3;
 const CENTER = { x: 150, y: 150 };
 const RADIUS = 135;
@@ -136,7 +136,7 @@ export default function ArcheryPage() {
  <div className="text-center"><div className="text-6xl">🏹</div><h2 className="mt-3 text-lg font-bold">Match Setup</h2></div>
  <div className="mt-5 grid grid-cols-2 gap-2">
  <button onClick={() => setStake(0)} className={`rounded-xl py-3 text-sm font-bold ${stake === 0 ? "bg-gradient-to-r from-teal-400 to-yellow-300 text-black" : "bg-white/10"}`}>🆓 Free Match</button>
- <button onClick={() => setStake(stake === 0 ? 100 : stake)} className={`rounded-xl py-3 text-sm font-bold ${stake > 0 ? "bg-gradient-to-r from-yellow-300 to-orange-400 text-black" : "bg-white/10"}`}>🪙 Coin Match</button>
+ <button onClick={() => setStake(stake === 0 ? STAKES[1] : stake)} className={`rounded-xl py-3 text-sm font-bold ${stake > 0 ? "bg-gradient-to-r from-yellow-300 to-orange-400 text-black" : "bg-white/10"}`}>🪙 Coin Match</button>
  </div>
  {stake > 0 && <div className="mt-4 grid grid-cols-4 gap-2">{STAKES.slice(1).map((v) => <button key={v} onClick={() => setStake(v)} className={`rounded-xl py-2 text-xs font-bold ${stake === v ? "bg-yellow-300 text-black" : "bg-white/10"}`}>🪙 {v}</button>)}</div>}
  <div className="grid grid-cols-2 gap-2 mt-5"><button onClick={startSolo} className="rounded-full bg-gradient-to-r from-teal-400 to-yellow-300 py-4 font-bold text-black">🤖 Solo Practice</button><button disabled={busy} onClick={startMatch} className="mt-5 w-full rounded-full bg-gradient-to-r from-teal-400 to-yellow-300 py-4 font-bold text-black disabled:opacity-60">{busy ? "Finding…" : "⚡ Quick Match"}</button></div>

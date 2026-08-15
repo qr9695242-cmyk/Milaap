@@ -17,6 +17,8 @@ export default function LoginPage() {
  const router = useRouter();
  const { user } = useAuth();
  const [email, setEmail] = useState("");
+ const [phone, setPhone] = useState("");
+ const [loginMode, setLoginMode] = useState("phone");
  const [password, setPassword] = useState("");
  const [error, setError] = useState("");
  const [busy, setBusy] = useState(false);
@@ -39,10 +41,14 @@ export default function LoginPage() {
  setBusy(true);
 
  try {
- await signInWithEmailAndPassword(auth, email, password);
+ const normalized = String(phone || "").replace(/\D/g, "").replace(/^00/, "").replace(/^0/, "92");
+ const loginEmail = loginMode === "phone" ? `${normalized}@phone.milaap.local` : email;
+ if (loginMode === "phone" && normalized.length < 10) throw new Error("VALID_PHONE");
+ await signInWithEmailAndPassword(auth, loginEmail, password);
  router.replace("/");
  } catch (err) {
- console.error("Email sign-in failed:", err);
+ if (err.message === "VALID_PHONE") { setError("Enter a valid mobile number."); setBusy(false); return; }
+ console.error("Sign-in failed:", err);
  setError(friendlyError(err.code));
  } finally {
  setBusy(false);
@@ -116,17 +122,15 @@ export default function LoginPage() {
  </div>
 
  <form onSubmit={handleLogin} className="mt-5 space-y-4">
- <div>
- <label className="text-xs text-mist">Email</label>
- <input
- type="email"
- required
- value={email}
- onChange={(e) => setEmail(e.target.value)}
- className="mt-1 w-full rounded-xl bg-panel2 px-4 py-3 text-sm text-ink outline-none ring-1 ring-white/10 focus:ring-neon-violet"
- placeholder="you@example.com"
- />
+ <div className="flex gap-2 rounded-xl bg-panel2 p-1">
+ <button type="button" onClick={() => setLoginMode("phone")} className={`flex-1 rounded-lg px-3 py-2 text-xs font-semibold ${loginMode === "phone" ? "bg-white text-void" : "text-mist"}`}>Mobile</button>
+ <button type="button" onClick={() => setLoginMode("email")} className={`flex-1 rounded-lg px-3 py-2 text-xs font-semibold ${loginMode === "email" ? "bg-white text-void" : "text-mist"}`}>Email</button>
  </div>
+ {loginMode === "phone" ? (
+ <div><label className="text-xs text-mist">Mobile number</label><input type="tel" inputMode="tel" autoComplete="tel" required value={phone} onChange={(e) => setPhone(e.target.value)} className="mt-1 w-full rounded-xl bg-panel2 px-4 py-3 text-sm text-ink outline-none ring-1 ring-white/10 focus:ring-neon-violet" placeholder="0300 1234567" /></div>
+ ) : (
+ <div><label className="text-xs text-mist">Email</label><input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} className="mt-1 w-full rounded-xl bg-panel2 px-4 py-3 text-sm text-ink outline-none ring-1 ring-white/10 focus:ring-neon-violet" placeholder="you@example.com" /></div>
+ )}
 
  <div>
  <div className="flex items-center justify-between">
