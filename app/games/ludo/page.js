@@ -689,7 +689,7 @@ function LudoBoard({ state, onToken }) {
  state.diceRolled && state.players?.[state.turnIndex]?.color === color && canMove(position, state.dice)
  ? "animate-pulse scale-110 ring-4 ring-yellow-300/90"
  : ""
- }`}"
+ }`}
  style={{
  left: `${(coord[1] / 15) * 100}%`,
  top: `${(coord[0] / 15) * 100}%`,
@@ -718,7 +718,7 @@ function HomeTokens({ color, state, onToken }) {
  state.diceRolled && state.players?.[state.turnIndex]?.color === color && canMove(position, state.dice)
  ? "animate-pulse scale-110 ring-4 ring-yellow-300/90"
  : ""
- }`}"
+ }`}
  style={{
  left: `${(c / 6) * 100}%`,
  top: `${(r / 6) * 100}%`,
