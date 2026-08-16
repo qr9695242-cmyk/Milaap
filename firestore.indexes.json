@@ -1,0 +1,129 @@
+{
+ "indexes": [
+ {
+ "collectionGroup": "rooms",
+ "queryScope": "COLLECTION",
+ "fields": [
+ { "fieldPath": "status", "order": "ASCENDING" },
+ { "fieldPath": "createdAt", "order": "DESCENDING" }
+ ]
+ },
+ {
+ "collectionGroup": "casualMatches",
+ "queryScope": "COLLECTION",
+ "fields": [
+ { "fieldPath": "gameId", "order": "ASCENDING" },
+ { "fieldPath": "status", "order": "ASCENDING" },
+ { "fieldPath": "createdAt", "order": "ASCENDING" }
+ ]
+ },
+ {
+ "collectionGroup": "casualMatches",
+ "queryScope": "COLLECTION",
+ "fields": [
+ { "fieldPath": "gameId", "order": "ASCENDING" },
+ { "fieldPath": "status", "order": "ASCENDING" },
+ { "fieldPath": "createdAt", "order": "DESCENDING" }
+ ]
+ },
+ {
+ "collectionGroup": "ludoMatches",
+ "queryScope": "COLLECTION",
+ "fields": [
+ { "fieldPath": "status", "order": "ASCENDING" },
+ { "fieldPath": "createdAt", "order": "DESCENDING" }
+ ]
+ },
+ {
+ "collectionGroup": "rechargeRequests",
+ "queryScope": "COLLECTION",
+ "fields": [
+ { "fieldPath": "status", "order": "ASCENDING" },
+ { "fieldPath": "createdAt", "order": "ASCENDING" }
+ ]
+ },
+ {
+ "collectionGroup": "rechargeRequests",
+ "queryScope": "COLLECTION",
+ "fields": [
+ { "fieldPath": "uid", "order": "ASCENDING" },
+ { "fieldPath": "createdAt", "order": "DESCENDING" }
+ ]
+ },
+ {
+ "collectionGroup": "withdrawRequests",
+ "queryScope": "COLLECTION",
+ "fields": [
+ { "fieldPath": "status", "order": "ASCENDING" },
+ { "fieldPath": "createdAt", "order": "ASCENDING" }
+ ]
+ },
+ {
+ "collectionGroup": "withdrawRequests",
+ "queryScope": "COLLECTION",
+ "fields": [
+ { "fieldPath": "uid", "order": "ASCENDING" },
+ { "fieldPath": "createdAt", "order": "DESCENDING" }
+ ]
+ },
+ {
+ "collectionGroup": "reports",
+ "queryScope": "COLLECTION",
+ "fields": [
+ { "fieldPath": "status", "order": "ASCENDING" },
+ { "fieldPath": "createdAt", "order": "DESCENDING" }
+ ]
+ },
+ {
+ "collectionGroup": "blocks",
+ "queryScope": "COLLECTION",
+ "fields": [
+ { "fieldPath": "blockerId", "order": "ASCENDING" },
+ { "fieldPath": "createdAt", "order": "DESCENDING" }
+ ]
+ },
+ {
+ "collectionGroup": "follows",
+ "queryScope": "COLLECTION",
+ "fields": [
+ { "fieldPath": "followingId", "order": "ASCENDING" },
+ { "fieldPath": "createdAt", "order": "DESCENDING" }
+ ]
+ },
+ {
+ "collectionGroup": "follows",
+ "queryScope": "COLLECTION",
+ "fields": [
+ { "fieldPath": "followerId", "order": "ASCENDING" },
+ { "fieldPath": "createdAt", "order": "DESCENDING" }
+ ]
+ },
+ {
+ "collectionGroup": "cpRequests",
+ "queryScope": "COLLECTION",
+ "fields": [
+ { "fieldPath": "toUid", "order": "ASCENDING" },
+ { "fieldPath": "status", "order": "ASCENDING" },
+ { "fieldPath": "createdAt", "order": "DESCENDING" }
+ ]
+ },
+ {
+ "collectionGroup": "friendRequests",
+ "queryScope": "COLLECTION",
+ "fields": [
+ { "fieldPath": "toUid", "order": "ASCENDING" },
+ { "fieldPath": "status", "order": "ASCENDING" },
+ { "fieldPath": "createdAt", "order": "DESCENDING" }
+ ]
+ },
+ {
+ "collectionGroup": "users",
+ "queryScope": "COLLECTION",
+ "fields": [
+ { "fieldPath": "agencyId", "order": "ASCENDING" },
+ { "fieldPath": "diamonds", "order": "DESCENDING" }
+ ]
+ }
+ ],
+ "fieldOverrides": []
+}
